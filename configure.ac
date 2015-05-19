@@ -1,0 +1,13 @@
+AC_INIT([bt-listbox], [1.0])
+
+AM_INIT_AUTOMAKE([foreign])
+
+AC_PROG_CC
+
+PKG_CHECK_MODULES(LISTBOX, gtk+-3.0)
+
+AC_CONFIG_FILES([
+	Makefile
+])
+
+AC_OUTPUT

@@ -1,0 +1,17 @@
+.deps/
+COPYING
+INSTALL
+*.o
+bt_demo
+*.in
+missing
+install-sh
+Makefile
+config.*
+compile
+configure
+install-sh
+depcomp
+*.m4
+autom4te.cache/
+
