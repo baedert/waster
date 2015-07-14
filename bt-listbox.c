@@ -5,24 +5,28 @@
 
 typedef struct _BtListBoxPrivate BtListBoxPrivate;
 
-struct _BtListBox
-{
-  GtkContainer parent_instance;
-
-  BtListBoxPrivate *priv;
-};
-
 struct _BtListBoxPrivate
 {
   GtkAdjustment *vadjustment;
   GtkAdjustment *hadjustment;
   GdkWindow     *bin_window;
+
   int            bin_y_diff;
   GPtrArray     *widgets;
   GList         *old_widgets;
 
+  int            model_from;
+  int            model_to;
+
+  int           next_visible_item;
+  int           prev_visible_item;
+
+
+  GListModel    *model;
+
 
   BtListBoxWidgetFillFunc fill_func;
+  BtListBoxFilterFunc     filter_func;
 };
 
 enum
@@ -40,6 +44,23 @@ G_DEFINE_TYPE_WITH_CODE (BtListBox, bt_list_box,
                          G_ADD_PRIVATE (BtListBox)
                          G_IMPLEMENT_INTERFACE (GTK_TYPE_SCROLLABLE, NULL))
 
+/* GObject API {{{ */
+
+static void
+bt_list_box_set_vadjustment (BtListBox *list_box, GtkAdjustment *vadjustment)
+{
+  BtListBoxPrivate *priv = bt_list_box_get_instance_private (list_box);
+
+  priv->vadjustment = vadjustment;
+}
+
+static void
+bt_list_box_set_hadjustment (BtListBox *list_box, GtkAdjustment *hadjustment)
+{
+  BtListBoxPrivate *priv = bt_list_box_get_instance_private (list_box);
+
+  priv->hadjustment = hadjustment;
+}
 
 static void
 bt_list_box_set_property (GObject      *object,
@@ -47,18 +68,20 @@ bt_list_box_set_property (GObject      *object,
                           const GValue *value,
                           GParamSpec   *pspec)
 {
-  BtListBoxPrivate *priv = bt_list_box_get_instance_private (BT_LIST_BOX (object));
+  BtListBoxPrivate *priv = bt_list_box_get_instance_private ((BtListBox *)object);
 
   switch (prop_id)
     {
     case PROP_HADJUSTMENT:
-      gtk_scrollable_set_hadjustment (GTK_SCROLLABLE (object), g_value_get_object (value));
+      bt_list_box_set_hadjustment ((BtListBox *)object, g_value_get_object ((value)));
       break;
     case PROP_VADJUSTMENT:
-      gtk_scrollable_set_vadjustment (GTK_SCROLLABLE (object), g_value_get_object (value));
+      bt_list_box_set_vadjustment ((BtListBox *)object, g_value_get_object ((value)));
       break;
     /*case PROP_HSCROLL_POLICY:*/
     /*case PROP_VSCROLL_POLICY:*/
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
     }
 
 }
@@ -81,9 +104,24 @@ bt_list_box_get_property (GObject    *object,
       break;
     /*case PROP_HSCROLL_POLICY:*/
     /*case PROP_VSCROLL_POLICY:*/
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
     }
 }
 
+
+static void
+bt_list_box_finalize (GObject *object)
+{
+  BtListBoxPrivate *priv = bt_list_box_get_instance_private ((BtListBox *)object);
+
+  g_clear_object (&priv->hadjustment);
+  g_clear_object (&priv->vadjustment);
+}
+
+
+
+/* }}} */
 
 static inline int
 get_widget_height (GtkWidget *instance,
@@ -100,23 +138,68 @@ get_widget_height (GtkWidget *instance,
 }
 
 static void
-ensure_visible_widgets ()
+ensure_visible_widgets (BtListBox *list_box)
 {
-
+  BtListBoxPrivate *priv = bt_list_box_get_instance_private (list_box);
 }
 
 static void
-position_children ()
+position_children (BtListBox *list_box)
 {
+  BtListBoxPrivate *priv = bt_list_box_get_instance_private (list_box);
+  int i;
+  int len = priv->widgets->len;
+  int widget_width = gtk_widget_get_allocated_width ((GtkWidget *)list_box);
+  GtkAllocation child_allocation = { 0 };
 
+  child_allocation.x = 0;
+  child_allocation.y = 0;
+  child_allocation.width = widget_width;
+
+
+  for (i = 0; i < len; ++i)
+    {
+      GtkWidget *widget = g_ptr_array_index (priv->widgets, i);
+      int minimum, natural;
+      gtk_widget_get_preferred_height_for_width (widget, widget_width,
+                                                 &minimum,
+                                                 &natural);
+      child_allocation.height = minimum;
+
+      gtk_widget_size_allocate (widget, &child_allocation);
+
+      child_allocation.y += minimum;
+    }
 }
 
 
 static void
-update_bin_window ()
+update_bin_window (BtListBox *list_box)
+{
+
+  BtListBoxPrivate *priv = bt_list_box_get_instance_private (list_box);
+}
+
+
+static void
+items_changed_cb (GListModel *model,
+                  guint       position,
+                  guint       removed,
+                  guint       added,
+                  gpointer    user_data)
+{
+  BtListBox *list_box = user_data;
+
+  g_message ("%s: %u, %u, %u", __FUNCTION__, position, removed, added);
+}
+
+
+static void
+configure_adjustment (BtListBox *list_box)
 {
 
 }
+
 
 /* GtkContainer API {{{ */
 static void
@@ -131,13 +214,13 @@ bt_list_box_forall (GtkContainer *container,
 static GType
 bt_list_box_child_type (GtkContainer *container)
 {
-  return GTK_TYPE_WIDGET;
+  return GTK_TYPE_LIST_BOX_ROW;
 }
 
 static void
 dont_call_this ()
 {
-  g_error ("Don't call this.");
+  g_error ("Don't call %s", __FUNCTION__);
 }
 
 
@@ -164,8 +247,9 @@ static void
 bt_list_box_size_allocate (GtkWidget     *widget,
                            GtkAllocation *allocation)
 {
+  BtListBox *list_box = (BtListBox *)widget;
   gtk_widget_set_allocation (widget, allocation);
-  position_children ();
+  position_children (list_box);
 
   if (gtk_widget_get_realized (widget))
     {
@@ -175,10 +259,11 @@ bt_list_box_size_allocate (GtkWidget     *widget,
                               allocation->y,
                               allocation->width,
                               allocation->height);
-      update_bin_window ();
+      update_bin_window (list_box);
     }
 
-  ensure_visible_widgets ();
+  configure_adjustment (list_box);
+  /*ensure_visible_widgets (list_box);*/
 }
 
 static void
@@ -225,16 +310,6 @@ bt_list_box_realize (GtkWidget *widget)
 }
 
 /* }}} */
-
-static void
-bt_list_box_finalize (GObject *object)
-{
-  BtListBoxPrivate *priv = bt_list_box_get_instance_private (BT_LIST_BOX (object));
-
-  if (priv->hadjustment)
-    g_object_unref (priv->hadjustment);
-}
-
 static void
 bt_list_box_class_init (BtListBoxClass *class)
 {
@@ -245,13 +320,13 @@ bt_list_box_class_init (BtListBoxClass *class)
   object_class->set_property = bt_list_box_set_property;
   object_class->get_property = bt_list_box_get_property;
 
-  widget_class->realize = bt_list_box_realize;
+  widget_class->realize       = bt_list_box_realize;
   widget_class->size_allocate = bt_list_box_size_allocate;
-  widget_class->draw = bt_list_box_draw;
+  widget_class->draw          = bt_list_box_draw;
 
-  container_class->add = dont_call_this;
-  container_class->remove = dont_call_this;
-  container_class->forall = bt_list_box_forall;
+  container_class->add        = dont_call_this;
+  container_class->remove     = dont_call_this;
+  container_class->forall     = bt_list_box_forall;
   container_class->child_type = bt_list_box_child_type;
 
   g_object_class_override_property (object_class, PROP_HADJUSTMENT, "hadjustment");
@@ -264,6 +339,10 @@ static void
 bt_list_box_init (BtListBox *list)
 {
   /* foobar */
+  GtkStyleContext *ct = gtk_widget_get_style_context ((GtkWidget *)list);
+
+
+  gtk_style_context_add_class (ct, "list");
 }
 
 
@@ -277,11 +356,36 @@ bt_list_box_new ()
 
 /* Setter/Getter {{{ */
 void
-bt_list_box_set_widget_fill_func (BtListBox               *list,
+bt_list_box_set_widget_fill_func (BtListBox               *list_box,
                                   BtListBoxWidgetFillFunc  fill_func)
 {
-  BtListBoxPrivate *priv = bt_list_box_get_instance_private (list);
+  BtListBoxPrivate *priv = bt_list_box_get_instance_private (list_box);
 
   priv->fill_func = fill_func;
 }
+
+void bt_list_box_set_filter_func (BtListBox           *list_box,
+                                  BtListBoxFilterFunc  filter_func)
+{
+  BtListBoxPrivate *priv = bt_list_box_get_instance_private (list_box);
+
+  priv->filter_func = filter_func;
+}
+
+
+void
+bt_list_box_set_model (BtListBox  *list_box,
+                       GListModel *model)
+{
+  BtListBoxPrivate *priv = bt_list_box_get_instance_private (list_box);
+
+  g_assert (priv->model == NULL);
+
+  g_object_ref ((GObject *)model);
+  priv->model = model;
+
+  g_signal_connect ((GObject *)model, "items-changed", (GCallback)items_changed_cb, list_box);
+}
+
+
 /* }}} */
