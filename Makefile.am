@@ -1,10 +1,9 @@
-bin_PROGRAMS = bt_demo
+bin_PROGRAMS = waster
 
-AM_CPPFLAGS = $(LISTBOX_CFLAGS)
+AM_CPPFLAGS = $(WASTER_CFLAGS)
 
-bt_demo_LDADD = $(LISTBOX_LIBS)
+waster_LDADD = $(WASTER_LIBS)
 
-bt_demo_SOURCES = \
-	demo.c \
-	bt-listbox.h \
-	bt-listbox.c
+waster_SOURCES = \
+	waster.c \
+	waster-main-window.c

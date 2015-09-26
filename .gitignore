@@ -14,4 +14,4 @@ install-sh
 depcomp
 *.m4
 autom4te.cache/
-
+waster
