@@ -43,6 +43,7 @@ imgur_image_init_from_json (ImgurImage *img,
 
 
   img->index = -1;
+  img->surface = NULL;
 }
 
 G_DEFINE_TYPE (WsImageLoader, ws_image_loader, G_TYPE_OBJECT);
@@ -232,6 +233,12 @@ ws_image_loader_load_image_async (WsImageLoader       *loader,
   g_return_if_fail (WS_IS_IMAGE_LOADER (loader));
 
   task = g_task_new (loader, cancellable, callback, user_data);
+  if (image->surface != NULL)
+    {
+      g_task_return_pointer (task, image, NULL);
+      g_object_unref (task);
+      return;
+    }
 
   g_task_set_task_data (task, image, NULL);
   g_task_run_in_thread (task, ws_image_loader_load_image_threaded);

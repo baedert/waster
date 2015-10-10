@@ -12,6 +12,7 @@
         <child>
           <object class="GtkButton" id="prev_button">
             <property name="visible">true</property>
+            <property name="sensitive">false</property>
             <signal name="clicked" handler="prev_button_clicked_cb" />
 
             <child>
@@ -64,14 +65,17 @@
         <child>
           <object class="GtkStack" id="image_stack">
             <property name="visible">true</property>
-            <property name="transition_type">slide-left-right</property>
+            <property name="transition_type">slide-left-right</property>a
+            <property name="hexpand">true</property>
 
             <child>
               <object class="GtkScrolledWindow">
                 <property name="visible">true</property>
+                <property name="hexpand">true</property>
                 <child>
                   <object class="WsAlbumView" id="album_view">
                     <property name="visible">true</property>
+                    <property name="hexpand">true</property>
 
                   </object>
                 </child>

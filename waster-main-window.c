@@ -44,6 +44,26 @@ show_next_image (WsMainWindow *window)
                                     image_loaded_cb,
                                     window);
 
+  if (window->current_image_index > 0)
+    gtk_widget_set_sensitive (window->prev_button, TRUE);
+}
+
+static void
+show_prev_image (WsMainWindow *window)
+{
+
+  WsImageLoader *loader = window->loader;
+
+  window->current_image_index --;
+  g_message ("Loading image %u", window->current_image_index);
+  ws_image_loader_load_image_async (loader,
+                                    loader->images[window->current_image_index],
+                                    NULL,
+                                    image_loaded_cb,
+                                    window);
+
+  if (window->current_image_index == 0)
+    gtk_widget_set_sensitive (window->prev_button, FALSE);
 }
 
 void
@@ -56,9 +76,12 @@ next_button_clicked_cb (GtkButton *button,
 }
 
 void
-prev_button_clicked_cb ()
+prev_button_clicked_cb (GtkButton *button,
+                        gpointer   user_data)
 {
+  WsMainWindow *window = user_data;
 
+  show_prev_image (window);
 }
 
 WsMainWindow *

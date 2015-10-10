@@ -1,4 +1,8 @@
+#include <math.h>
+
 #include "waster-album-view.h"
+#include "waster-media.h"
+
 
 
 G_DEFINE_TYPE_WITH_CODE (WsAlbumView, ws_album_view, GTK_TYPE_BOX,
@@ -28,6 +32,42 @@ ws_album_view_value_changed_cb (GtkAdjustment *adjustment, gpointer user_data)
 }
 
 static void
+get_visible_size (WsAlbumView *view,
+                  ImgurImage  *image,
+                  int         *visible_width,
+                  int         *visible_height,
+                  double      *scale)
+{
+  int widget_width = gtk_widget_get_allocated_width (GTK_WIDGET (view));
+  int widget_height = gtk_widget_get_allocated_height (GTK_WIDGET (view));
+
+  double hscale = G_MAXDOUBLE;
+  double vscale = G_MAXDOUBLE;
+
+  if (widget_width < image->width)
+    hscale = (double)widget_width / (double)image->width;
+
+  if (widget_height < image->height)
+    vscale = (double)widget_height / (double)image->height;
+
+  if (hscale < vscale)
+    {
+      *visible_width  = widget_width;
+      *visible_height = (int)(image->height * hscale);
+
+      if (scale) *scale = hscale;
+    }
+  else
+    {
+      *visible_width  = (int)(image->width * vscale);
+      *visible_height = widget_height;
+
+      if (scale) *scale = vscale;
+    }
+
+}
+
+static void
 ws_album_view_upate_adjustments (WsAlbumView *view)
 {
   int i;
@@ -37,12 +77,16 @@ ws_album_view_upate_adjustments (WsAlbumView *view)
     {
       for (i = 0; i < view->cur_image->n_subimages; i ++)
         {
-          height += view->cur_image->subimages[i]->height;
+          int w,h;
+          get_visible_size (view, view->cur_image->subimages[i], &w, &h, NULL);
+          height += h;
         }
     }
   else
     {
-      height = view->cur_image->height;
+      int w, h;
+      get_visible_size (view, view->cur_image, &w, &h, NULL);
+      height = h;
     }
 
   gtk_adjustment_set_upper (view->vadjustment, height);
@@ -73,7 +117,10 @@ ws_album_view_reserve_space (WsAlbumView *view,
           ImgurImage *img = image->subimages[i];
           g_assert (img != NULL);
 
-          view->images[i] = gtk_image_new ();
+          if (image->subimages[i]->is_animated)
+            view->images[i] = gtk_button_new_with_label ("FOO");
+          else
+            view->images[i] = gtk_image_new ();
           gtk_widget_show (view->images[i]);
           gtk_widget_set_size_request (GTK_WIDGET (view->images[i]), img->width, img->height);
 
@@ -85,9 +132,12 @@ ws_album_view_reserve_space (WsAlbumView *view,
     {
       view->n_images = 1;
       view->images = g_malloc (1 * sizeof (GtkImage *));
-      view->images[0] = gtk_image_new ();
+      if (image->is_animated)
+        view->images[0] = gtk_button_new_with_label ("FOO");
+      else
+        view->images[0] = ws_image_view_new (image->width, image->height);
+
       gtk_widget_show (view->images[0]);
-      gtk_widget_set_size_request (GTK_WIDGET (view->images[0]), image->width, image->height);
 
       gtk_container_add (GTK_CONTAINER (view), view->images[0]);
     }
@@ -109,8 +159,16 @@ ws_album_view_show_image (WsAlbumView *view,
 
   g_assert (image->surface);
 
-  gtk_image_set_from_surface (GTK_IMAGE (view->images[index]),
-                              image->surface);
+  if (image->is_animated)
+    {
+      g_message ("This is animated! URL: %s", image->link);
+    }
+  else
+    {
+      ws_image_view_set_surface (WS_IMAGE_VIEW (view->images[index]),
+                                 image->surface);
+    }
+
 }
 
 
@@ -128,8 +186,9 @@ ws_album_view_set_property (GObject      *object,
         break;
       case PROP_VADJUSTMENT:
         WS_ALBUM_VIEW (object)->vadjustment = g_value_get_object (value);
-        g_signal_connect (G_OBJECT (WS_ALBUM_VIEW (object)->vadjustment), "value-changed",
-                          G_CALLBACK (ws_album_view_value_changed_cb), object);
+        if (WS_ALBUM_VIEW (object)->vadjustment)
+          g_signal_connect (G_OBJECT (WS_ALBUM_VIEW (object)->vadjustment), "value-changed",
+                            G_CALLBACK (ws_album_view_value_changed_cb), object);
         break;
       case PROP_HSCROLL_POLICY:
       case PROP_VSCROLL_POLICY:

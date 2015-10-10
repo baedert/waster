@@ -1,3 +1,6 @@
+#ifndef __ALBUM_VIEW
+#define __ALBUM_VIEW
+
 #include <gtk/gtk.h>
 
 #include "waster-image-loader.h"
@@ -43,3 +46,5 @@ void ws_album_view_reserve_space (WsAlbumView *view,
 void ws_album_view_show_image (WsAlbumView *view,
                                ImgurImage  *image);
 
+
+#endif
