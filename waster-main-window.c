@@ -1,6 +1,7 @@
 #include "waster-main-window.h"
 #include "waster-image-loader.h"
 #include "waster-initial-state.h"
+#include "waster-album-view.h"
 #include "waster.h"
 
 
@@ -13,6 +14,7 @@ struct _WsMainWindow
   GtkWidget *initial_state;
   GtkWidget *spinner;
   GtkWidget *image_stack;
+  GtkWidget *album_view;
 
   WsImageLoader *loader;
 
@@ -68,6 +70,7 @@ subimage_loaded_cb (GObject *source_object,
                     gpointer      user_data)
 {
   GError *error = NULL;
+  WsMainWindow *window = user_data;
   WsImageLoader *loader = WS_IMAGE_LOADER (source_object);
   ImgurImage *loaded_image;
 
@@ -79,7 +82,11 @@ subimage_loaded_cb (GObject *source_object,
   if (error)
     {
       g_warning ("%s", error->message);
+      return;
     }
+
+  ws_album_view_show_image (WS_ALBUM_VIEW (window->album_view),
+                            loaded_image);
 }
 
 static void
@@ -100,6 +107,9 @@ image_loaded_cb (GObject      *source_object,
       return;
     }
 
+  ws_album_view_reserve_space (WS_ALBUM_VIEW (window->album_view),
+                               img);
+
   if (img->is_album)
     {
       int i;
@@ -112,7 +122,7 @@ image_loaded_cb (GObject      *source_object,
                                             subimg,
                                             NULL,
                                             subimage_loaded_cb,
-                                            NULL);
+                                            window);
 
         }
 
@@ -121,6 +131,8 @@ image_loaded_cb (GObject      *source_object,
   else
     {
       gtk_window_set_title (GTK_WINDOW (window), img->title);
+      ws_album_view_show_image (WS_ALBUM_VIEW (window->album_view),
+                                img);
     }
 
 }
@@ -189,6 +201,7 @@ ws_main_window_class_init (WsMainWindowClass *class)
   gtk_widget_class_bind_template_child (widget_class, WsMainWindow, next_button);
   gtk_widget_class_bind_template_child (widget_class, WsMainWindow, image_stack);
   gtk_widget_class_bind_template_child (widget_class, WsMainWindow, spinner);
+  gtk_widget_class_bind_template_child (widget_class, WsMainWindow, album_view);
 
   gtk_widget_class_bind_template_callback (widget_class, next_button_clicked_cb);
   gtk_widget_class_bind_template_callback (widget_class, prev_button_clicked_cb);

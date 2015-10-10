@@ -17,6 +17,7 @@ struct _ImgurImage
   gboolean is_album;
   int width;
   int height;
+  gboolean is_animated;
 
   int n_subimages;
   struct _ImgurImage **subimages;

@@ -19,7 +19,6 @@ imgur_image_init_from_json (ImgurImage *img,
                             JsonObject *json_obj)
 {
   img->id     = g_strdup (json_object_get_string_member (json_obj, "id"));
-  img->link   = g_strdup (json_object_get_string_member (json_obj, "link"));
 
   if (json_object_has_member (json_obj, "width"))
     {
@@ -31,6 +30,19 @@ imgur_image_init_from_json (ImgurImage *img,
     img->title = NULL;
   else
     img->title = g_strdup (json_object_get_string_member (json_obj, "title"));
+
+  if (json_object_has_member (json_obj, "animated"))
+    img->is_animated = json_object_get_boolean_member (json_obj, "animated");
+  else
+    img->is_animated = FALSE;
+
+  if (img->is_animated)
+    img->link = g_strdup (json_object_get_string_member (json_obj, "mp4"));
+  else
+    img->link = g_strdup (json_object_get_string_member (json_obj, "link"));
+
+
+  img->index = -1;
 }
 
 G_DEFINE_TYPE (WsImageLoader, ws_image_loader, G_TYPE_OBJECT);
@@ -39,11 +51,6 @@ typedef struct _WsImageLoader WsImageLoader;
 
 
   /*
-   * 1) Use libsoup to load the entire file.
-   * 2) Use a MemoryInputStream to pipe it into GdkPixbuf
-   * 3) Render that pixbuf to a cairo_surface_t
-   * 4) Render that surface.
-   *
    * TODO:
    *
    * 1) Actual GIFs. Do they even exist on imgur or are they just encoding all the gifs as videos?
@@ -73,6 +80,11 @@ ws_image_loader_load_gallery_threaded (GTask         *task,
   JsonObject *root = json_node_get_object (json_parser_get_root (parser));
   JsonArray  *data_array = json_object_get_array_member (root, "data");
   int n_images = json_array_get_length (data_array);
+
+
+  /*JsonGenerator *gen = json_generator_new ();*/
+  /*json_generator_set_root (gen, json_parser_get_root (parser));*/
+  /*printf ("%s\n", json_generator_to_data (gen, NULL));*/
 
   g_assert (loader);
   loader->images = (ImgurImage **) g_malloc (n_images * sizeof (ImgurImage *));

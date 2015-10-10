@@ -54,6 +54,20 @@
           <object class="GtkStack" id="image_stack">
             <property name="visible">true</property>
             <property name="transition_type">slide-left-right</property>
+
+            <child>
+              <object class="GtkScrolledWindow">
+                <property name="visible">true</property>
+                <child>
+                  <object class="WsAlbumView" id="album_view">
+                    <property name="visible">true</property>
+
+                  </object>
+                </child>
+              </object>
+            </child>
+
+
           </object>
           <packing>
             <property name="name">image</property>

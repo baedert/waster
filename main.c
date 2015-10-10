@@ -1,5 +1,6 @@
 #include "waster.h"
 #include "waster-initial-state.h"
+#include "waster-album-view.h"
 
 
 int
@@ -10,6 +11,7 @@ main (int    argc,
   int ret;
 
   g_type_ensure (WS_TYPE_INITIAL_STATE);
+  g_type_ensure (WS_TYPE_ALBUM_VIEW);
 
   app = waster_new ();
 
