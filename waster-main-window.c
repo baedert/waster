@@ -34,12 +34,13 @@ next_button_clicked_cb (GtkButton *button,
                         gpointer   user_data)
 {
   WsMainWindow *window = user_data;
+  WsImageLoader *loader = window->loader;
   g_assert (WS_IS_MAIN_WINDOW (user_data));
 
   window->current_image_index ++;
   g_message ("Loading image %u", window->current_image_index);
-  ws_image_loader_load_image_async (window->loader,
-                                    window->current_image_index,
+  ws_image_loader_load_image_async (loader,
+                                    loader->images[window->current_image_index],
                                     NULL,
                                     image_loaded_cb,
                                     window);
@@ -62,6 +63,26 @@ ws_main_window_new (GtkApplication *app)
 }
 
 static void
+subimage_loaded_cb (GObject *source_object,
+                    GAsyncResult *result,
+                    gpointer      user_data)
+{
+  GError *error = NULL;
+  WsImageLoader *loader = WS_IMAGE_LOADER (source_object);
+  ImgurImage *loaded_image;
+
+
+  g_message ("Subimage loaded!");
+
+  loaded_image = ws_image_loader_load_image_finish (loader, result, &error);
+
+  if (error)
+    {
+      g_warning ("%s", error->message);
+    }
+}
+
+static void
 image_loaded_cb (GObject      *source_object,
                  GAsyncResult *result,
                  gpointer      user_data)
@@ -80,9 +101,27 @@ image_loaded_cb (GObject      *source_object,
     }
 
   if (img->is_album)
-    gtk_window_set_title (GTK_WINDOW (window), "[Album]");
+    {
+      int i;
+      g_message ("Loading %d images...", img->n_subimages);
+
+      for (i = 0; i < img->n_subimages; i ++)
+        {
+          ImgurImage *subimg = img->subimages[i];
+          ws_image_loader_load_image_async (loader,
+                                            subimg,
+                                            NULL,
+                                            subimage_loaded_cb,
+                                            NULL);
+
+        }
+
+      gtk_window_set_title (GTK_WINDOW (window), "[Album]");
+    }
   else
-    gtk_window_set_title (GTK_WINDOW (window), img->title);
+    {
+      gtk_window_set_title (GTK_WINDOW (window), img->title);
+    }
 
 }
 
@@ -107,7 +146,7 @@ gallery_loaded_cb (GObject      *source_object,
 
   /* Gallery is here, we can start loading images */
   ws_image_loader_load_image_async (loader,
-                                    window->current_image_index,
+                                    loader->images[window->current_image_index],
                                     NULL,
                                     image_loaded_cb,
                                     window);

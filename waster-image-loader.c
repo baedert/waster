@@ -18,23 +18,20 @@ static void
 imgur_image_init_from_json (ImgurImage *img,
                             JsonObject *json_obj)
 {
-  img->id       = g_strdup (json_object_get_string_member (json_obj, "id"));
-  img->link     = g_strdup (json_object_get_string_member (json_obj, "link"));
+  img->id     = g_strdup (json_object_get_string_member (json_obj, "id"));
+  img->link   = g_strdup (json_object_get_string_member (json_obj, "link"));
+
+  if (json_object_has_member (json_obj, "width"))
+    {
+      img->width  = json_object_get_int_member (json_obj, "width");
+      img->height = json_object_get_int_member (json_obj, "height");
+    }
+
   if (json_object_get_null_member (json_obj, "title"))
     img->title = NULL;
   else
     img->title = g_strdup (json_object_get_string_member (json_obj, "title"));
-
 }
-
-
-struct _WsImageLoader
-{
-  GObject parent_instance;
-  ImgurImage **images;
-  guint n_images;
-  guint current;
-};
 
 G_DEFINE_TYPE (WsImageLoader, ws_image_loader, G_TYPE_OBJECT);
 
@@ -130,10 +127,8 @@ ws_image_loader_load_image_threaded (GTask         *task,
   SoupMessage *msg;
   GError *error = NULL;
   WsImageLoader *loader = source_object;
-  ImgurImage *image;
-  guint image_index = GPOINTER_TO_UINT (task_data);
+  ImgurImage *image = task_data;
 
-  image = loader->images[image_index];
   session = soup_session_new ();
 
   if (image->is_album)
@@ -163,6 +158,8 @@ ws_image_loader_load_image_threaded (GTask         *task,
             JsonObject *img_json = json_array_get_object_element (data_array, i);
             image->subimages[i] = g_malloc (sizeof (ImgurImage));
             imgur_image_init_from_json (image->subimages[i], img_json);
+            image->subimages[i]->index = i;
+            image->subimages[i]->is_album = FALSE;
           }
 
         g_object_unref (parser);
@@ -218,22 +215,18 @@ ws_image_loader_load_image_threaded (GTask         *task,
 
 void
 ws_image_loader_load_image_async (WsImageLoader       *loader,
-                                  guint                image_index,
+                                  ImgurImage          *image,
                                   GCancellable        *cancellable,
                                   GAsyncReadyCallback  callback,
                                   gpointer             user_data)
 {
-  GTask *task = g_task_new (loader, cancellable, callback, user_data);
+  GTask *task;
 
-  if (image_index >= loader->n_images)
-    {
-      g_task_return_new_error (task, WS_ERROR, WS_GENERIC_ERROR,
-                               "%u >= %u", image_index, loader->n_images);
-      g_object_unref (task);
-      return;
-    }
+  g_return_if_fail (WS_IS_IMAGE_LOADER (loader));
 
-  g_task_set_task_data (task, GUINT_TO_POINTER (image_index), NULL);
+  task = g_task_new (loader, cancellable, callback, user_data);
+
+  g_task_set_task_data (task, image, NULL);
   g_task_run_in_thread (task, ws_image_loader_load_image_threaded);
 
   g_object_unref (task);
@@ -245,10 +238,65 @@ ws_image_loader_load_image_finish (WsImageLoader *loader,
                                    GError        **error)
 {
   g_return_val_if_fail (g_task_is_valid (result, loader), NULL);
+
   return g_task_propagate_pointer (G_TASK (result), error);
 }
 
 
+
+void
+ws_image_loader_load_album_threaded (GTask         *task,
+                                     gpointer       source_object,
+                                     gpointer       task_data,
+                                     GCancellable *cancellable)
+{
+  WsImageLoader *loader = source_object;
+  ImgurImage *album = task_data;
+  ImgurImage *image;
+
+  g_assert (album->is_album);
+
+
+
+
+}
+
+void
+ws_image_loader_load_album_async (WsImageLoader       *loader,
+                                  ImgurImage          *album,
+                                  GCancellable        *cancellable,
+                                  GAsyncReadyCallback  callback,
+                                  gpointer             user_data)
+{
+  GTask *task;
+
+  g_return_if_fail (album != NULL);
+  g_return_if_fail (album->is_album);
+
+  task = g_task_new (loader, cancellable, callback, user_data);
+
+  g_task_set_task_data (task, album, NULL);
+  g_task_run_in_thread (task, ws_image_loader_load_album_threaded);
+
+  g_object_unref (task);
+}
+
+ImgurImage *
+ws_image_loader_load_album_finish (WsImageLoader  *loader,
+                                   GAsyncResult   *result,
+                                   GError        **error)
+{
+  g_return_val_if_fail (g_task_is_valid (result, loader), NULL);
+
+  return g_task_propagate_pointer (G_TASK (result), error);
+}
+
+
+
+
+
+
+/* ---------------------------------------------------------------------------------- */
 
 WsImageLoader *
 ws_image_loader_new ()
