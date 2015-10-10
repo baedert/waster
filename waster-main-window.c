@@ -2,6 +2,7 @@
 #include "waster-image-loader.h"
 #include "waster-initial-state.h"
 #include "waster-album-view.h"
+#include "waster-impostor.h"
 #include "waster.h"
 
 
@@ -15,6 +16,7 @@ struct _WsMainWindow
   GtkWidget *spinner;
   GtkWidget *image_stack;
   GtkWidget *album_view;
+  GtkWidget *impostor;
 
   WsImageLoader *loader;
 
@@ -36,6 +38,16 @@ show_next_image (WsMainWindow *window)
 {
   WsImageLoader *loader = window->loader;
 
+
+  gtk_stack_set_transition_type (GTK_STACK (window->image_stack),
+                                 GTK_STACK_TRANSITION_TYPE_NONE);
+  ws_impostor_clone (WS_IMPOSTOR (window->impostor),
+                     gtk_stack_get_visible_child (GTK_STACK (window->image_stack)));
+  gtk_stack_set_visible_child_name (GTK_STACK (window->image_stack), "impostor");
+  gtk_stack_set_transition_type (GTK_STACK (window->image_stack),
+                                 GTK_STACK_TRANSITION_TYPE_SLIDE_LEFT_RIGHT);
+
+
   window->current_image_index ++;
   g_message ("Loading image %u", window->current_image_index);
   ws_image_loader_load_image_async (loader,
@@ -46,6 +58,8 @@ show_next_image (WsMainWindow *window)
 
   if (window->current_image_index > 0)
     gtk_widget_set_sensitive (window->prev_button, TRUE);
+
+  gtk_stack_set_visible_child_name (GTK_STACK (window->image_stack), "album");
 }
 
 static void
@@ -184,6 +198,7 @@ gallery_loaded_cb (GObject      *source_object,
 
   window->current_image_index = 0;
   gtk_stack_set_visible_child_name (GTK_STACK (window->main_stack), "image");
+  gtk_stack_set_visible_child_name (GTK_STACK (window->image_stack), "album");
 
   /* Gallery is here, we can start loading images */
   ws_image_loader_load_image_async (loader,
@@ -249,6 +264,7 @@ ws_main_window_class_init (WsMainWindowClass *class)
   gtk_widget_class_bind_template_child (widget_class, WsMainWindow, image_stack);
   gtk_widget_class_bind_template_child (widget_class, WsMainWindow, spinner);
   gtk_widget_class_bind_template_child (widget_class, WsMainWindow, album_view);
+  gtk_widget_class_bind_template_child (widget_class, WsMainWindow, impostor);
 
   gtk_widget_class_bind_template_callback (widget_class, next_button_clicked_cb);
   gtk_widget_class_bind_template_callback (widget_class, prev_button_clicked_cb);

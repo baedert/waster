@@ -26,6 +26,7 @@ sources = [
   'waster-initial-state.c',
   'waster-album-view.c',
   'waster-media.c',
+  'waster-impostor.c',
   'main.c',
   resources
 ]

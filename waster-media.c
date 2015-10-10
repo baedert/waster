@@ -101,9 +101,6 @@ ws_image_view_get_preferred_height (GtkWidget *widget,
 
   *nat = view->surface_height * scale;
   *min = 1;
-
-  g_message ("%d/%f", view->surface_height, scale);
-  g_message ("nat: %f", view->surface_height * scale);
 }
 
 static void

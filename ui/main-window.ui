@@ -65,8 +65,25 @@
         <child>
           <object class="GtkStack" id="image_stack">
             <property name="visible">true</property>
-            <property name="transition_type">slide-left-right</property>a
+            <property name="transition_type">slide-left-right</property>
             <property name="hexpand">true</property>
+
+
+
+            <child>
+              <object class="WsImpostor" id="impostor">
+                <property name="visible">true</property>
+                <property name="hexpand">true</property>
+                <property name="vexpand">true</property>
+                <property name="halign">fill</property>
+                <property name="valign">fill</property>
+              </object>
+              <packing>
+                <property name="name">impostor</property>
+              </packing>
+            </child>
+
+
 
             <child>
               <object class="GtkScrolledWindow">
@@ -80,8 +97,10 @@
                   </object>
                 </child>
               </object>
+              <packing>
+                <property name="name">album</property>
+              </packing>
             </child>
-
 
           </object>
           <packing>
