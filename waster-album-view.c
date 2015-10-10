@@ -19,7 +19,34 @@ remove_image (GtkWidget *widget, gpointer data)
   gtk_container_remove (data, widget);
 }
 
+static void
+ws_album_view_value_changed_cb (GtkAdjustment *adjustment, gpointer user_data)
+{
+  WsAlbumView *view = user_data;
 
+  gtk_widget_queue_draw (user_data);
+}
+
+static void
+ws_album_view_upate_adjustments (WsAlbumView *view)
+{
+  int i;
+  int height = 0;
+
+  if (view->cur_image->is_album)
+    {
+      for (i = 0; i < view->cur_image->n_subimages; i ++)
+        {
+          height += view->cur_image->subimages[i]->height;
+        }
+    }
+  else
+    {
+      height = view->cur_image->height;
+    }
+
+  gtk_adjustment_set_upper (view->vadjustment, height);
+}
 
 
 void
@@ -34,6 +61,8 @@ ws_album_view_reserve_space (WsAlbumView *view,
                          remove_image, view);
 
   g_free (view->images);
+
+  view->cur_image = image;
 
   if (image->is_album)
     {
@@ -62,6 +91,9 @@ ws_album_view_reserve_space (WsAlbumView *view,
 
       gtk_container_add (GTK_CONTAINER (view), view->images[0]);
     }
+
+  ws_album_view_upate_adjustments (view);
+  gtk_adjustment_set_value (view->vadjustment, 0);
 }
 
 void
@@ -96,6 +128,8 @@ ws_album_view_set_property (GObject      *object,
         break;
       case PROP_VADJUSTMENT:
         WS_ALBUM_VIEW (object)->vadjustment = g_value_get_object (value);
+        g_signal_connect (G_OBJECT (WS_ALBUM_VIEW (object)->vadjustment), "value-changed",
+                          G_CALLBACK (ws_album_view_value_changed_cb), object);
         break;
       case PROP_HSCROLL_POLICY:
       case PROP_VSCROLL_POLICY:
@@ -123,6 +157,31 @@ ws_album_view_get_property (GObject    *object,
     }
 }
 
+static gboolean
+ws_album_view_draw (GtkWidget *widget, cairo_t *ct)
+{
+  WsAlbumView *view = WS_ALBUM_VIEW (widget);
+  double vvalue = gtk_adjustment_get_value (view->vadjustment);
+
+
+  cairo_translate (ct, 0, -vvalue);
+  GTK_WIDGET_CLASS (ws_album_view_parent_class)->draw (widget, ct);
+
+  return GDK_EVENT_PROPAGATE;
+}
+
+static void
+ws_album_view_size_allocate (GtkWidget     *widget,
+                             GtkAllocation *allocation)
+{
+  WsAlbumView *view = WS_ALBUM_VIEW (widget);
+
+  gtk_adjustment_set_page_size (view->vadjustment, allocation->height);
+
+  GTK_WIDGET_CLASS (ws_album_view_parent_class)->size_allocate (widget, allocation);
+}
+
+
 static void
 ws_album_view_init (WsAlbumView *view)
 {
@@ -133,9 +192,13 @@ static void
 ws_album_view_class_init (WsAlbumViewClass *class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (class);
+  GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (class);
 
   object_class->set_property = ws_album_view_set_property;
   object_class->get_property = ws_album_view_get_property;
+
+  widget_class->draw = ws_album_view_draw;
+  widget_class->size_allocate = ws_album_view_size_allocate;
 
   g_object_class_override_property (object_class, PROP_HADJUSTMENT, "hadjustment");
   g_object_class_override_property (object_class, PROP_VADJUSTMENT, "vadjustment");

@@ -81,11 +81,6 @@ ws_image_loader_load_gallery_threaded (GTask         *task,
   JsonArray  *data_array = json_object_get_array_member (root, "data");
   int n_images = json_array_get_length (data_array);
 
-
-  /*JsonGenerator *gen = json_generator_new ();*/
-  /*json_generator_set_root (gen, json_parser_get_root (parser));*/
-  /*printf ("%s\n", json_generator_to_data (gen, NULL));*/
-
   g_assert (loader);
   loader->images = (ImgurImage **) g_malloc (n_images * sizeof (ImgurImage *));
 

@@ -9,6 +9,7 @@ struct _WsAlbumView
   GtkAdjustment *hadjustment;
   GtkAdjustment *vadjustment;
 
+  ImgurImage *cur_image;
   GtkWidget **images;
   int n_images;
 };

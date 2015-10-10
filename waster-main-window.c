@@ -31,13 +31,10 @@ static void image_loaded_cb (GObject      *source_object,
                              gpointer      user_data);
 /* }}} */
 
-void
-next_button_clicked_cb (GtkButton *button,
-                        gpointer   user_data)
+static void
+show_next_image (WsMainWindow *window)
 {
-  WsMainWindow *window = user_data;
   WsImageLoader *loader = window->loader;
-  g_assert (WS_IS_MAIN_WINDOW (user_data));
 
   window->current_image_index ++;
   g_message ("Loading image %u", window->current_image_index);
@@ -47,6 +44,15 @@ next_button_clicked_cb (GtkButton *button,
                                     image_loaded_cb,
                                     window);
 
+}
+
+void
+next_button_clicked_cb (GtkButton *button,
+                        gpointer   user_data)
+{
+  WsMainWindow *window = user_data;
+
+  show_next_image (window);
 }
 
 void
@@ -164,12 +170,30 @@ gallery_loaded_cb (GObject      *source_object,
                                     window);
 }
 
+static void
+go_next_cb (GSimpleAction *action, GVariant *v, gpointer user_data)
+{
+  WsMainWindow *window = user_data;
+
+  show_next_image (window);
+}
+
+
+static GActionEntry win_entries[] = {
+  { "go-next", go_next_cb, NULL, NULL, NULL }
+};
+
 void
 ws_main_window_init (WsMainWindow *win)
 {
   Waster *app = (Waster *)g_application_get_default ();
 
   gtk_widget_init_template (GTK_WIDGET (win));
+
+  g_action_map_add_action_entries (G_ACTION_MAP (win),
+                                   win_entries, G_N_ELEMENTS (win_entries),
+                                   win);
+
   win->loader = ws_image_loader_new ();
 
   if (waster_is_proxy_inited (app))

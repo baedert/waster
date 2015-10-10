@@ -12,16 +12,27 @@
         <child>
           <object class="GtkButton" id="prev_button">
             <property name="visible">true</property>
-            <property name="label">Prev</property>
             <signal name="clicked" handler="prev_button_clicked_cb" />
+
+            <child>
+              <object class="GtkImage">
+                <property name="visible">true</property>
+                <property name="icon-name">go-previous-symbolic</property>
+              </object>
+            </child>
           </object>
         </child>
 
         <child>
           <object class="GtkButton" id="next_button">
             <property name="visible">true</property>
-            <property name="label">Next</property>
             <signal name="clicked" handler="next_button_clicked_cb" />
+            <child>
+              <object class="GtkImage">
+                <property name="visible">true</property>
+                <property name="icon-name">go-next-symbolic</property>
+              </object>
+            </child>
           </object>
         </child>
 

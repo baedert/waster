@@ -169,9 +169,32 @@ activate (GApplication *app)
 }
 
 static void
+go_next_cb (GSimpleAction *action, GVariant *v, gpointer user_data)
+{
+  g_message ("next");
+}
+
+static GActionEntry app_entries[] = {
+  /*{"go-prev", go_prev_cb, NULL, NULL, NULL},*/
+  /*{"go-next", go_next_cb, NULL, NULL, NULL}*/
+};
+
+
+
+static void
 startup (GApplication *app)
 {
   G_APPLICATION_CLASS (ws_parent_class)->startup (app);
+
+  /*g_action_map_add_action_entries (G_ACTION_MAP (app),*/
+                                   /*app_entries, G_N_ELEMENTS (app_entries),*/
+                                   /*app);*/
+
+  const char *accels[] = {NULL, NULL};
+
+  accels[0] = "Right";
+  gtk_application_set_accels_for_action (GTK_APPLICATION (app), "win.go-next", accels);
+
 }
 
 
