@@ -1,0 +1,7 @@
+<gresources>
+  <gresource prefix="/org/baedert/waster">
+    <file compressed="true" preprocess="xml-stripblanks">ui/initial-state.ui</file>
+    <file compressed="true" preprocess="xml-stripblanks">ui/main-window.ui</file>
+    <file>data/initial-state.png</file>
+  </gresource>
+</gresources>

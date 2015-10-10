@@ -4,7 +4,9 @@ AM_INIT_AUTOMAKE([foreign])
 
 AC_PROG_CC
 
-PKG_CHECK_MODULES(WASTER, gtk+-3.0)
+PKG_CHECK_MODULES(WASTER,
+                  gtk+-3.0
+                  rest-0.7)
 
 AC_CONFIG_FILES([
 	Makefile

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <template class="WsInitialState" parent="GtkBox">
+    <property name="border_width">0</property>
+    <property name="orientation">vertical</property>
+    <property name="margin_start">24</property>
+    <property name="margin_top">24</property>
+    <property name="margin_bottom">24</property>
+    <property name="margin_end">24</property>
+    <property name="spacing">12</property>
+    <property name="valign">center</property>
+    <property name="halign">center</property>
+
+    <child>
+      <object class="GtkImage">
+        <property name="visible">true</property>
+        <property name="width_request">120</property>
+        <property name="height_request">120</property>
+        <property name="resource">/org/baedert/waster/data/initial-state.png</property>
+      </object>
+    </child>
+
+
+    <child>
+      <object class="GtkLabel">
+        <property name="visible">true</property>
+        <property name="label" translatable="yes">HEY THERE CAPTAIN JACK</property>
+        <attributes>
+          <attribute name="scale" value="3.0" />
+        </attributes>
+      </object>
+    </child>
+
+    <child>
+      <object class="GtkEntry" id="pin_entry">
+        <property name="visible">true</property>
+        <property name="halign">center</property>
+        <property name="placeholder_text" translatable="yes">PIN</property>
+      </object>
+    </child>
+
+    <child>
+      <object class="GtkBox">
+        <property name="visible">true</property>
+        <property name="orientation">horizontal</property>
+        <property name="homogeneous">true</property>
+        <property name="spacing">12</property>
+        <property name="halign">center</property>
+
+
+        <child>
+          <object class="GtkButton" id="request_pin_button">
+            <property name="visible">true</property>
+            <property name="label" translatable="yes">Request PIN</property>
+            <signal name="clicked" handler="request_pin_button_clicked_cb" />
+          </object>
+        </child>
+
+        <child>
+          <object class="GtkButton" id="submit_button">
+            <property name="visible">true</property>
+            <property name="label" translatable="yes">Submit</property>
+            <signal name="clicked" handler="submit_button_clicked_cb" />
+          </object>
+        </child>
+
+      </object>
+    </child>
+
+  </template>
+</interface>
