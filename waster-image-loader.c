@@ -14,6 +14,19 @@ print_imgur_image (ImgurImage *img)
              img->id, img->link, img->is_album, img->title);
 }
 
+static void
+imgur_image_init_from_json (ImgurImage *img,
+                            JsonObject *json_obj)
+{
+  img->id       = g_strdup (json_object_get_string_member (json_obj, "id"));
+  img->link     = g_strdup (json_object_get_string_member (json_obj, "link"));
+  if (json_object_get_null_member (json_obj, "title"))
+    img->title = NULL;
+  else
+    img->title = g_strdup (json_object_get_string_member (json_obj, "title"));
+
+}
+
 
 struct _WsImageLoader
 {
@@ -27,27 +40,7 @@ G_DEFINE_TYPE (WsImageLoader, ws_image_loader, G_TYPE_OBJECT);
 
 typedef struct _WsImageLoader WsImageLoader;
 
-/*enum {*/
-  /*GALLERY_LOADED,*/
-  /*IMAGE_LOADED,*/
 
-  /*N_SIGNALS*/
-/*};*/
-
-/*static guint loader_signals[N_SIGNALS] = { 0, };*/
-
-
-void
-ws_image_loader_next (WsImageLoader *loader)
-{
-  g_assert (0);
-
-  loader->current ++;
-}
-
-
-void ws_image_loader_preload (WsImageLoader *loader)
-{
   /*
    * 1) Use libsoup to load the entire file.
    * 2) Use a MemoryInputStream to pipe it into GdkPixbuf
@@ -60,7 +53,6 @@ void ws_image_loader_preload (WsImageLoader *loader)
    * 2) Videos. gifv/mp4/webm available!
    *
    */
-}
 
 static void
 ws_image_loader_load_gallery_threaded (GTask         *task,
@@ -94,9 +86,7 @@ ws_image_loader_load_gallery_threaded (GTask         *task,
       loader->images[i] = g_malloc (sizeof (ImgurImage));
       ImgurImage *img = loader->images[i];
 
-      img->id       = g_strdup (json_object_get_string_member (image_object, "id"));
-      img->title    = g_strdup (json_object_get_string_member (image_object, "title"));
-      img->link     = g_strdup (json_object_get_string_member (image_object, "link"));
+      imgur_image_init_from_json (img, image_object);
       img->is_album = json_object_get_boolean_member (image_object, "is_album");
     }
 
@@ -136,16 +126,57 @@ ws_image_loader_load_image_threaded (GTask         *task,
                                      GCancellable *cancellable)
 
 {
+  SoupSession *session;
+  SoupMessage *msg;
   GError *error = NULL;
   WsImageLoader *loader = source_object;
+  ImgurImage *image;
   guint image_index = GPOINTER_TO_UINT (task_data);
 
-  ImgurImage *current_image = loader->images[image_index];
+  image = loader->images[image_index];
+  session = soup_session_new ();
+
+  if (image->is_album)
+    {
+      Waster *waster = (Waster *) g_application_get_default ();
+      char *function = g_strdup_printf ("album/%s/images", image->id);
+
+      RestProxyCall *call = rest_proxy_new_call (waster->proxy);
+      rest_proxy_call_set_function (call, function);
+      rest_proxy_call_set_method (call, "GET");
+
+      rest_proxy_call_sync (call, NULL);
+
+      {
+        JsonParser *parser = json_parser_new ();
+        JsonObject *root;
+        JsonArray  *data_array;
+        int         n_subimages, i;
+        json_parser_load_from_data (parser, rest_proxy_call_get_payload (call), -1, NULL);
+        root = json_node_get_object (json_parser_get_root (parser));
+        data_array = json_object_get_array_member (root, "data");
+
+        image->n_subimages = (int)json_array_get_length (data_array);
+        image->subimages = g_malloc (image->n_subimages * sizeof (ImgurImage *));
+        for (i = 0; i < image->n_subimages; i ++)
+          {
+            JsonObject *img_json = json_array_get_object_element (data_array, i);
+            image->subimages[i] = g_malloc (sizeof (ImgurImage));
+            imgur_image_init_from_json (image->subimages[i], img_json);
+          }
+
+        g_object_unref (parser);
+      }
 
 
+      g_free (function);
 
-  SoupSession *session = soup_session_new ();
-  SoupMessage *message = soup_message_new ("GET", current_image->link);
+      g_task_return_pointer (task, image, NULL);
+      return;
+    }
+
+
+  SoupMessage *message = soup_message_new ("GET", image->link);
 
   soup_session_send_message (session, message);
 
@@ -173,7 +204,7 @@ ws_image_loader_load_image_threaded (GTask         *task,
                                                                    1,
                                                                    NULL);
 
-  current_image->surface = surface;
+  image->surface = surface;
 
   g_input_stream_close (in_stream, NULL, NULL);
   g_object_unref (in_stream);
@@ -182,7 +213,7 @@ ws_image_loader_load_image_threaded (GTask         *task,
   g_object_unref (message);
   g_object_unref (session);
 
-  g_task_return_pointer (task, current_image, NULL);
+  g_task_return_pointer (task, image, NULL);
 }
 
 void
@@ -235,46 +266,4 @@ void
 ws_image_loader_class_init (WsImageLoaderClass *class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (class);
-
-
-  /*loader_signals[IMAGE_LOADED] =*/
-      /*g_signal_newv ("gallery-loaded",*/
-                    /*G_TYPE_FROM_CLASS (class),*/
-                    /*G_SIGNAL_RUN_LAST | G_SIGNAL_NO_RECURSE | G_SIGNAL_NO_HOOKS,*/
-                    /*NULL,*/
-                    /*NULL,*/
-                    /*NULL,*/
-                    /*NULL,*/
-                    /*G_TYPE_NONE, [> Return type <]*/
-                    /*0,*/
-                    /*NULL);*/
-
-
-   /*TODO: Make this a signal where the callback gets 2 parameters -- the image id and the subimage id (for albums */
-  /*loader_signals[IMAGE_LOADED] =*/
-      /*g_signal_new ("image-loaded",*/
-                    /*G_TYPE_FROM_CLASS (object_class),*/
-                    /*G_SIGNAL_RUN_LAST,*/
-                    /*0, [> class callback offset <]*/
-                    /*NULL,*/
-                    /*NULL,*/
-                    /*NULL,*/
-                    /*G_TYPE_NONE, [> return type <]*/
-                    /*1, CAIRO_GOBJECT_TYPE_SURFACE);*/
-
-
-
-
-
-                    /*G_STRUCT_OFFSET (WsImageLoaderClass, load_iamge*/
-      /*g_signal_newv ("image-loaded",*/
-                    /*G_TYPE_FROM_CLASS (class),*/
-                    /*G_SIGNAL_RUN_LAST | G_SIGNAL_NO_RECURSE | G_SIGNAL_NO_HOOKS,*/
-                    /*NULL,*/
-                    /*NULL,*/
-                    /*NULL,*/
-                    /*NULL,*/
-                    /*G_TYPE_NONE, [> Return type <]*/
-                    /*0,*/
-                    /*NULL);*/
 }

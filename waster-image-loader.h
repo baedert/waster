@@ -15,6 +15,9 @@ struct _ImgurImage
   gchar *link;
   cairo_surface_t *surface; // XXX Support albums here!
   gboolean is_album;
+
+  int n_subimages;
+  struct _ImgurImage **subimages;
 };
 
 typedef struct _ImgurImage ImgurImage;
@@ -26,8 +29,6 @@ G_DECLARE_FINAL_TYPE (WsImageLoader, ws_image_loader, WS, IMAGE_LOADER, GObject)
 
 
 WsImageLoader *ws_image_loader_new ();
-
-void ws_image_loader_next (WsImageLoader *loader);
 
 void ws_image_loader_load_gallery_async (WsImageLoader       *loader,
                                          GCancellable        *cancellable,

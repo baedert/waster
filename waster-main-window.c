@@ -79,7 +79,10 @@ image_loaded_cb (GObject      *source_object,
       return;
     }
 
-  gtk_window_set_title (GTK_WINDOW (window), img->title);
+  if (img->is_album)
+    gtk_window_set_title (GTK_WINDOW (window), "[Album]");
+  else
+    gtk_window_set_title (GTK_WINDOW (window), img->title);
 
 }
 

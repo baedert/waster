@@ -22,7 +22,6 @@ install_data(
 sources = [
   'waster.c',
   'waster-main-window.c',
-  'waster-image.c',
   'waster-image-loader.c',
   'waster-initial-state.c',
   'main.c',
