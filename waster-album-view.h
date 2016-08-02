@@ -15,6 +15,8 @@ struct _WsAlbumView
   ImgurImage *cur_image;
   GtkWidget **images;
   int n_images;
+
+  int cur_visible_image;
 };
 
 typedef struct _WsAlbumView WsAlbumView;
@@ -45,6 +47,9 @@ void ws_album_view_reserve_space (WsAlbumView *view,
 
 void ws_album_view_show_image (WsAlbumView *view,
                                ImgurImage  *image);
+
+void ws_album_view_scroll_to_next (WsAlbumView *view);
+void ws_album_view_scroll_to_prev (WsAlbumView *view);
 
 
 #endif

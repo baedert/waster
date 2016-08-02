@@ -1,8 +1,6 @@
-
+#include <math.h>
 
 #include "waster-media.h"
-
-#include <math.h>
 
 
 G_DEFINE_TYPE (WsImageView, ws_image_view, GTK_TYPE_WIDGET);
@@ -50,11 +48,7 @@ get_scale (WsImageView *view)
   double hscale = (double)widget_width / (double)image_width;
   double vscale = (double)widget_height / (double)image_height;
 
-
-  if (image_width * hscale < image_height * vscale)
-    return MIN (1, hscale);
-
-  return MIN (1, vscale);
+  return MIN (hscale, MIN (vscale, 1));
 }
 
 static gboolean
@@ -66,19 +60,18 @@ ws_image_view_draw (GtkWidget *widget, cairo_t *ct)
   int widget_width = gtk_widget_get_allocated_width (widget);
   int widget_height = gtk_widget_get_allocated_height (widget);
 
-
   double scale = get_scale (view);
-  if (view->surface_width * scale < widget_width)
-    x = (widget_width - (view->surface_width * scale)) / 2;
-
-  if (view->surface_height * scale < widget_height)
-    y = (widget_height - (view->surface_height * scale)) / 2;
+  x = (widget_width - (view->surface_width * scale)) / 2;
+  y = (widget_height - (view->surface_height * scale)) / 2;
 
 
-  cairo_rectangle (ct, 0, 0, widget_width, widget_height);
-  cairo_scale (ct, scale, scale);
-  cairo_set_source_surface (ct, view->surface, x / scale, y / scale);
-  cairo_fill (ct);
+  if (view->surface)
+    {
+      cairo_rectangle (ct, 0, 0, widget_width, widget_height);
+      cairo_scale (ct, scale, scale);
+      cairo_set_source_surface (ct, view->surface, x / scale, y / scale);
+      cairo_fill (ct);
+    }
 
 
   return GDK_EVENT_PROPAGATE;
@@ -100,7 +93,7 @@ ws_image_view_get_preferred_height (GtkWidget *widget,
   double scale = get_scale (WS_IMAGE_VIEW (widget));
 
   *nat = view->surface_height * scale;
-  *min = 1;
+  *min = 0;
 }
 
 static void
@@ -112,7 +105,7 @@ ws_image_view_get_preferred_width (GtkWidget *widget,
   double scale = get_scale (WS_IMAGE_VIEW (widget));
 
   *nat  = view->surface_width * scale;
-  *min = 1;
+  *min = 0;
 }
 
 static void
@@ -132,3 +125,27 @@ ws_image_view_init (WsImageView *view)
 {
   gtk_widget_set_has_window (GTK_WIDGET (view), FALSE);
 }
+
+
+
+
+G_DEFINE_TYPE (WsVideoView, ws_video_view, GTK_TYPE_FRAME);
+
+GtkWidget *
+ws_video_view_new ()
+{
+  return GTK_WIDGET (g_object_new (WS_TYPE_VIDEO_VIEW, NULL));
+}
+
+static void
+ws_video_view_class_init (WsVideoViewClass *class)
+{
+
+}
+
+static void
+ws_video_view_init (WsVideoView *view)
+{
+
+}
+

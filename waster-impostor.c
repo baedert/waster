@@ -11,6 +11,8 @@ ws_impostor_clone (WsImpostor *impostor, GtkWidget *widget)
 {
   cairo_t *context;
 
+  if (!widget) return;
+
   if (impostor->surface)
     cairo_surface_destroy (impostor->surface);
 
@@ -21,7 +23,11 @@ ws_impostor_clone (WsImpostor *impostor, GtkWidget *widget)
                                                          CAIRO_CONTENT_COLOR_ALPHA,
                                                          impostor->w, impostor->h);
 
+  g_assert (impostor->surface != NULL);
+
   context = cairo_create (impostor->surface);
+
+  g_assert (context != NULL);
 
   gtk_widget_draw (widget, context);
 

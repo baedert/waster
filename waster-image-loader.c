@@ -8,6 +8,36 @@
 
 
 static void
+print_call (RestProxyCall *call)
+{
+  RestParams *params;
+  GHashTable *ht;
+  GList *keys, *l;
+  GString *str = g_string_new (rest_proxy_call_get_method (call));
+  g_string_append (str, " ");
+  g_string_append (str, rest_proxy_call_get_function (call));
+
+  params = rest_proxy_call_get_params (call);
+  ht = rest_params_as_string_hash_table (params);
+
+  g_string_append_c (str, '?');
+
+  keys = g_hash_table_get_keys (ht);
+  for (l = keys; l; l = l->next)
+    {
+      char *k = l->data;
+      char *v = g_hash_table_lookup (ht, k);
+      g_string_append (str, k);
+      g_string_append (str, "=");
+      g_string_append (str, v);
+      g_string_append (str, "&");
+    }
+
+  g_message ("%s", str->str);
+}
+
+
+static void
 print_imgur_image (ImgurImage *img)
 {
   g_message ("Image -- ID: %s , link: %s , album: %d , title: '%s'",
@@ -65,20 +95,40 @@ ws_image_loader_load_gallery_threaded (GTask         *task,
                                        gpointer       task_data,
                                        GCancellable *cancellable)
 {
+  GError *error = NULL;
   WsImageLoader *loader = source_object;
   Waster *app = (Waster *)g_application_get_default ();
   int i;
 
   RestProxyCall *call = rest_proxy_new_call (app->proxy);
-  rest_proxy_call_set_function (call, "/gallery/hot/viral/0.json");
+  /*rest_proxy_call_set_function (call, "/gallery/hot/viral/0.json");*/
+  rest_proxy_call_set_function (call, "gallery/hot/viral/0.json");
   rest_proxy_call_set_method (call, "GET");
+  /*char *auth = g_strdup_printf ("Bearer %s", oauth2_proxy_get_access_token (app->proxy));*/
+  /*rest_proxy_call_add_header (call, "Authorization", auth);*/
+
+  print_call (call);
 
   rest_proxy_call_sync (call, NULL);
 
   JsonParser *parser = json_parser_new ();
-  json_parser_load_from_data (parser, rest_proxy_call_get_payload (call), -1, NULL);
+  json_parser_load_from_data (parser, rest_proxy_call_get_payload (call), -1, &error);
 
   JsonObject *root = json_node_get_object (json_parser_get_root (parser));
+
+  if (error)
+    {
+      g_error ("%s", error->message);
+    }
+
+  if (!json_object_has_member (root, "data") ||
+      !JSON_NODE_HOLDS_ARRAY (json_object_get_member (root, "data")))
+    {
+      g_critical ("%s: root is not an array.", __FUNCTION__);
+      printf ("%s\n", rest_proxy_call_get_payload (call));
+      return;
+    }
+
   JsonArray  *data_array = json_object_get_array_member (root, "data");
   int n_images = json_array_get_length (data_array);
 
@@ -108,10 +158,11 @@ ws_image_loader_load_gallery_async (WsImageLoader       *loader,
                                     GAsyncReadyCallback  callback,
                                     gpointer             user_data)
 {
-  GTask *task = g_task_new (loader, cancellable, callback, user_data);
+  /*GTask *task = g_task_new (loader, cancellable, callback, user_data);*/
 
-  g_task_run_in_thread (task, ws_image_loader_load_gallery_threaded);
-  g_object_unref (task);
+  ws_image_loader_load_gallery_threaded (NULL, loader, NULL, NULL);
+  /*g_task_run_in_thread (task, ws_image_loader_load_gallery_threaded);*/
+  /*g_object_unref (task);*/
 }
 
 void

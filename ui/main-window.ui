@@ -27,6 +27,7 @@
         <child>
           <object class="GtkButton" id="next_button">
             <property name="visible">true</property>
+            <property name="action-name">win.go-next</property>
             <signal name="clicked" handler="next_button_clicked_cb" />
             <child>
               <object class="GtkImage">

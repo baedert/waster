@@ -1,5 +1,6 @@
 #include "waster.h"
 #include "waster-main-window.h"
+#include "imgur-proxy.h"
 
 #include <string.h>
 #include <gtk/gtk.h>
@@ -8,6 +9,8 @@
 #include <libsoup/soup.h>
 #include <json-glib/json-glib.h>
 
+#define CLIENT_ID "a4800ceccb6aaeb"
+#define CLIENT_SECRET "e5687608c2100712648cb5946acd6c5d84ae97f1"
 
 
 G_DEFINE_QUARK (ws-error-quark, ws_error);
@@ -40,8 +43,7 @@ waster_get_login_url (Waster *waster)
 {
   GHashTable *params = g_hash_table_new (g_str_hash, g_str_equal);
 
-
-  g_hash_table_insert (params, "client_id",     "8774fc09703750c");
+  g_hash_table_insert (params, "client_id",     CLIENT_ID);
   g_hash_table_insert (params, "response_type", "pin");
 
   gchar *login_url = oauth2_proxy_build_login_url_full (OAUTH2_PROXY (waster->proxy),
@@ -88,13 +90,13 @@ void
 waster_maybe_refresh_token (Waster      *waster,
                             const gchar *pin)
 {
-  const gchar *refresh_token;
+  const char *refresh_token;
   gchar *req;
   SoupSession *session;
   SoupMessage *message;
   SoupMessageBody *response_body;
   GError *error = NULL;
-  GString *request = g_string_new ("client_id=8774fc09703750c&client_secret=69c5f69a22dc9baf56c58c174f40de5eaefc3f5e");
+  GString *request = g_string_new ("");
 
   if (!pin && !waster_is_token_expired (waster))
     {
@@ -102,24 +104,30 @@ waster_maybe_refresh_token (Waster      *waster,
       return;
     }
 
-  g_message ("Refreshing the access token...");
+  g_message ("Refreshing the access token... (PIN '%s')", pin);
 
+  session = soup_session_new ();
+  message = soup_message_new ("POST", "https://api.imgur.com/oauth2/token");
 
+  g_string_append (request, "client_id=");
+  g_string_append (request, CLIENT_ID);
+  g_string_append (request, "&client_secret=");
+  g_string_append (request, CLIENT_SECRET);
+
+  /* Without a PIN, this will use the refresh token to get us a new token */
   if (!pin)
     {
-      refresh_token = g_settings_get_string (waster->settings, "refresh-token");
+      char *refresh_token = g_settings_get_string (waster->settings, "refresh-token");
       g_string_append (request, "&grant_type=refresh_token&refresh_token=");
       g_string_append (request, refresh_token);
       g_free ((char *)refresh_token);
     }
   else
     {
-      g_string_append (request, "?grant_type=pin&pin=");
+      g_string_append (request, "&grant_type=pin&pin=");
       g_string_append (request, pin);
     }
 
-  session = soup_session_new ();
-  message = soup_message_new ("POST", "https://api.imgur.com/oauth2/token");
 
   req = g_string_free (request, FALSE);
   g_message ("Request: %s", req);
@@ -137,24 +145,24 @@ waster_maybe_refresh_token (Waster      *waster,
 
   g_object_get (G_OBJECT (message), "response_body", &response_body, NULL);
 
-  gchar *result = (gchar *) response_body->data;
-  /*g_message ("%s", result);*/
+  const char *result = (const char *) response_body->data;
 
   JsonParser *parser = json_parser_new ();
-  json_parser_load_from_data (parser, result, -1, &error);
-
-  if (error)
+  if (!json_parser_load_from_data (parser, result, -1, &error))
     {
+      printf ("%s\n", result);
       g_error ("%s", error->message);
     }
 
   JsonObject *root = json_node_get_object (json_parser_get_root (parser));
 
-  const gchar *access_token = json_object_get_string_member (root, "access_token");
+  const char *access_token = json_object_get_string_member (root, "access_token");
+
   refresh_token = json_object_get_string_member (root, "refresh_token");
 
   waster_set_access_tokens (waster, access_token, refresh_token);
 
+  g_object_unref (parser);
   g_object_unref (message);
   g_object_unref (session);
 }
@@ -179,14 +187,23 @@ static void
 startup (GApplication *app)
 {
   GtkSettings *settings;
+  const char *accels[] = {NULL, NULL};
 
 
   G_APPLICATION_CLASS (ws_parent_class)->startup (app);
 
-  const char *accels[] = {NULL, NULL};
 
   accels[0] = "Right";
   gtk_application_set_accels_for_action (GTK_APPLICATION (app), "win.go-next", accels);
+
+  accels[0] = "Left";
+  gtk_application_set_accels_for_action (GTK_APPLICATION (app), "win.go-prev", accels);
+
+  accels[0] = "Down";
+  gtk_application_set_accels_for_action (GTK_APPLICATION (app), "win.go-down", accels);
+
+  accels[0] = "Up";
+  gtk_application_set_accels_for_action (GTK_APPLICATION (app), "win.go-up", accels);
 
 
   settings = gtk_settings_get_default ();
@@ -207,10 +224,7 @@ static void
 ws_init (Waster *waster)
 {
   waster->settings = g_settings_new ("org.baedert.waster");
-  waster->proxy    = oauth2_proxy_new ("8774fc09703750c",
-                                       "https://api.imgur.com/oauth2/authorize",
-                                       "https://api.imgur.com/3/",
-                                       FALSE);
+  waster->proxy    = imgur_proxy_new (CLIENT_ID);
 
   if (waster_is_proxy_inited (waster))
     {

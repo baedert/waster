@@ -46,8 +46,6 @@ void
 submit_button_clicked_cb (GtkWidget      *source,
                           WsInitialState *initial_state)
 {
-  GError *error = NULL;
-  gchar *request_str = NULL;
   Waster *app = (Waster *) (g_application_get_default ());
   const gchar *pin = gtk_entry_get_text (GTK_ENTRY (initial_state->pin_entry));
 

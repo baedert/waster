@@ -1,6 +1,6 @@
 project('waster', 'c')
 gtkdep = dependency('gtk+-3.0')
-restdep = dependency('rest-0.7')
+restdep = dependency('rest-1.0')
 soupdep = dependency('libsoup-2.4')
 jsondep = dependency('json-glib-1.0')
 
@@ -27,6 +27,8 @@ sources = [
   'waster-album-view.c',
   'waster-media.c',
   'waster-impostor.c',
+  'imgur-proxy.c',
+  'imgur-proxy-call.c',
   'main.c',
   resources
 ]

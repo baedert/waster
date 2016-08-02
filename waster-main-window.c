@@ -38,6 +38,7 @@ show_next_image (WsMainWindow *window)
 {
   WsImageLoader *loader = window->loader;
 
+  g_message (__FUNCTION__);
 
   gtk_stack_set_transition_type (GTK_STACK (window->image_stack),
                                  GTK_STACK_TRANSITION_TYPE_NONE);
@@ -69,7 +70,6 @@ show_prev_image (WsMainWindow *window)
   WsImageLoader *loader = window->loader;
 
   window->current_image_index --;
-  g_message ("Loading image %u", window->current_image_index);
   ws_image_loader_load_image_async (loader,
                                     loader->images[window->current_image_index],
                                     NULL,
@@ -95,7 +95,6 @@ prev_button_clicked_cb (GtkButton *button,
 {
   WsMainWindow *window = user_data;
 
-  show_prev_image (window);
 }
 
 WsMainWindow *
@@ -217,8 +216,40 @@ go_next_cb (GSimpleAction *action, GVariant *v, gpointer user_data)
 }
 
 
+static void
+go_prev_cb (GSimpleAction *action, GVariant *v, gpointer user_data)
+{
+  WsMainWindow *window = user_data;
+
+  g_assert (0);
+}
+
+
+static void
+go_down_cb (GSimpleAction *action, GVariant *v, gpointer user_data)
+{
+  WsMainWindow *window = user_data;
+
+  ws_album_view_scroll_to_next (WS_ALBUM_VIEW (window->album_view));
+}
+
+static void
+go_up_cb (GSimpleAction *action, GVariant *v, gpointer user_data)
+{
+  WsMainWindow *window = user_data;
+
+  ws_album_view_scroll_to_prev (WS_ALBUM_VIEW (window->album_view));
+}
+
+
+
+
+
 static GActionEntry win_entries[] = {
-  { "go-next", go_next_cb, NULL, NULL, NULL }
+  { "go-next", go_next_cb, NULL, NULL, NULL },
+  { "go-prev", go_prev_cb, NULL, NULL, NULL },
+  { "go-down", go_down_cb, NULL, NULL, NULL },
+  { "go-up",   go_up_cb,   NULL, NULL, NULL }
 };
 
 void
