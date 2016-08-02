@@ -34,7 +34,9 @@ sources = [
   resources
 ]
 
-gtkimageview = subproject('gtkimageview').get_variable('lib')
+gtkimageview = subproject('gtkimageview')
+gtkimageview_lib = gtkimageview.get_variable('lib')
+gtkimageview_dir = gtkimageview.get_variable('dir')
 
 executable(
   'waster',
@@ -44,5 +46,6 @@ executable(
                  soupdep,
                  jsondep,
                  gstdep],
-  link_with: gtkimageview
+  link_with: gtkimageview_lib,
+  include_directories: gtkimageview_dir
 )

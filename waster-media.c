@@ -1,4 +1,5 @@
 #include <math.h>
+#include <gtkimageview.h>
 
 #include "waster-media.h"
 
@@ -11,6 +12,7 @@ ws_image_view_new (int width, int height)
 {
   GObject *obj = g_object_new (WS_TYPE_IMAGE_VIEW,
                                "vexpand", TRUE,
+                               "fit-allocation", TRUE,
                                NULL);
   WS_IMAGE_VIEW (obj)->surface_width = width;
   WS_IMAGE_VIEW (obj)->surface_height = height;
@@ -51,39 +53,6 @@ get_scale (WsImageView *view)
   return MIN (hscale, MIN (vscale, 1));
 }
 
-static gboolean
-ws_image_view_draw (GtkWidget *widget, cairo_t *ct)
-{
-  WsImageView *view = WS_IMAGE_VIEW (widget);
-  int x = 0;
-  int y = 0;
-  int widget_width = gtk_widget_get_allocated_width (widget);
-  int widget_height = gtk_widget_get_allocated_height (widget);
-
-  double scale = get_scale (view);
-  x = (widget_width - (view->surface_width * scale)) / 2;
-  y = (widget_height - (view->surface_height * scale)) / 2;
-
-
-  if (view->surface)
-    {
-      cairo_rectangle (ct, 0, 0, widget_width, widget_height);
-      cairo_scale (ct, scale, scale);
-      cairo_set_source_surface (ct, view->surface, x / scale, y / scale);
-      cairo_fill (ct);
-    }
-
-
-  return GDK_EVENT_PROPAGATE;
-}
-
-static void
-ws_image_view_size_allocate (GtkWidget     *widget,
-                             GtkAllocation *allocation)
-{
-  gtk_widget_set_allocation (widget, allocation);
-}
-
 static void
 ws_image_view_get_preferred_height (GtkWidget *widget,
                                     int *min,
@@ -113,8 +82,6 @@ ws_image_view_class_init (WsImageViewClass *class)
 {
   GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (class);
 
-  widget_class->size_allocate = ws_image_view_size_allocate;
-  widget_class->draw = ws_image_view_draw;
   widget_class->get_preferred_height = ws_image_view_get_preferred_height;
   widget_class->get_preferred_width  = ws_image_view_get_preferred_width;
 }

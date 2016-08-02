@@ -5,7 +5,7 @@
 #include <cairo/cairo.h>
 #include <gst/gst.h>
 
-#include <gtkimageview/gtkimageview.h>
+#include <gtkimageview.h>
 
 #include "waster-image-loader.h"
 
