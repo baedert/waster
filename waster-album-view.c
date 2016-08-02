@@ -187,13 +187,13 @@ ws_album_view_show_image (WsAlbumView *view,
   if (image->is_animated)
     {
       g_assert (WS_IS_VIDEO_VIEW (view->images[index]));
-      g_message ("This is animated! URL: %s", image->link);
       ws_video_view_set_image (WS_VIDEO_VIEW (view->images[index]),
                                image);
     }
   else
     {
       g_assert (image->surface);
+      g_assert (WS_IS_IMAGE_VIEW (view->images[index]));
       ws_image_view_set_surface (WS_IMAGE_VIEW (view->images[index]),
                                  image->surface);
     }

@@ -3,7 +3,7 @@
 #include "waster-media.h"
 
 
-G_DEFINE_TYPE (WsImageView, ws_image_view, GTK_TYPE_WIDGET);
+G_DEFINE_TYPE (WsImageView, ws_image_view, GTK_TYPE_IMAGE_VIEW);
 
 
 GtkWidget *
@@ -34,7 +34,7 @@ ws_image_view_set_surface (WsImageView     *view,
 {
   view->surface = surface;
 
-  gtk_widget_queue_draw (GTK_WIDGET (view));
+  gtk_image_view_set_surface (GTK_IMAGE_VIEW (view), surface);
 }
 
 static double
@@ -204,11 +204,6 @@ ws_video_view_finalize (GObject *object)
     {
       gst_element_set_state (view->src, GST_STATE_NULL);
       g_object_unref (view->src);
-    }
-
-  if (view->sink != NULL)
-    {
-      /*g_object_unref (view->sink);*/
     }
 
   G_OBJECT_CLASS (ws_video_view_parent_class)->finalize (object);

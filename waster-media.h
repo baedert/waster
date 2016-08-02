@@ -5,11 +5,13 @@
 #include <cairo/cairo.h>
 #include <gst/gst.h>
 
+#include <gtkimageview/gtkimageview.h>
+
 #include "waster-image-loader.h"
 
 struct _WsImageView
 {
-  GtkWidget parent_instance;
+  GtkImageView parent_instance;
   cairo_surface_t *surface;
   int surface_width;
   int surface_height;
@@ -33,7 +35,7 @@ typedef struct _WsVideoView WsVideoView;
 
 #define WS_TYPE_IMAGE_VIEW ws_image_view_get_type()
 
-G_DECLARE_FINAL_TYPE (WsImageView, ws_image_view, WS, IMAGE_VIEW, GtkWidget);
+G_DECLARE_FINAL_TYPE (WsImageView, ws_image_view, WS, IMAGE_VIEW, GtkImageView);
 
 GtkWidget *ws_image_view_new ();
 void       ws_image_view_set_surface (WsImageView *image_view, cairo_surface_t *surface);

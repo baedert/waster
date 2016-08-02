@@ -1,0 +1,6 @@
+[submodule "gtkimageview"]
+	path = gtkimageview
+	url = https://github.com/baedert/gtkimageview
+[submodule "subprojects/gtkimageview"]
+	path = subprojects/gtkimageview
+	url = https://github.com/baedert/gtkimageview
