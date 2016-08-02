@@ -5,7 +5,7 @@
 
 
 
-G_DEFINE_TYPE_WITH_CODE (WsAlbumView, ws_album_view, GTK_TYPE_BOX,
+G_DEFINE_TYPE_WITH_CODE (WsAlbumView, ws_album_view, GTK_TYPE_CONTAINER,
                          G_IMPLEMENT_INTERFACE (GTK_TYPE_SCROLLABLE, NULL));
 
 enum {
@@ -17,33 +17,20 @@ enum {
 };
 
 static int
-current_visible_image (WsAlbumView *view,
-                       int         *height)
+current_visible_image (WsAlbumView *view)
 {
-  int i, h;
   int current_visible;
+  int widget_height = gtk_widget_get_allocated_height (GTK_WIDGET (view));
   double current_value = gtk_adjustment_get_value (view->vadjustment);
 
-  h = 0;
-  for (i = 0; i < view->n_images; i ++)
-    {
-      h += gtk_widget_get_allocated_height (view->images[i]);
-      if (h > current_value)
-        {
-          current_visible = i;
-          break;
-        }
-    }
-
-  *height = h;
+  current_visible = current_value / widget_height;
 
   return current_visible;
 }
 
-static void
-remove_image (GtkWidget *widget, gpointer data)
+static void __empty (GtkContainer *container, GtkWidget *child)
 {
-  gtk_container_remove (data, widget);
+  g_critical ("NOPE.");
 }
 
 static void
@@ -51,7 +38,7 @@ ws_album_view_value_changed_cb (GtkAdjustment *adjustment, gpointer user_data)
 {
   WsAlbumView *view = user_data;
 
-  gtk_widget_queue_draw (user_data);
+  gtk_widget_queue_allocate (GTK_WIDGET (view));
 }
 
 static void
@@ -86,19 +73,13 @@ get_visible_size (WsAlbumView *view,
 static void
 ws_album_view_update_adjustments (WsAlbumView *view)
 {
-  int i;
   int height = 0;
   double value = 0.0;
   double max_value;
 
   if (view->cur_image->is_album)
     {
-      for (i = 0; i < view->cur_image->n_subimages; i ++)
-        {
-          int w,h;
-          get_visible_size (view, view->cur_image->subimages[i], &w, &h, NULL);
-          height += h;
-        }
+      height = gtk_widget_get_allocated_height (GTK_WIDGET (view)) * view->n_images;
     }
   else
     {
@@ -118,6 +99,30 @@ ws_album_view_update_adjustments (WsAlbumView *view)
     gtk_adjustment_set_value (view->vadjustment, max_value);
 }
 
+static void
+ws_album_view_set (WsAlbumView *view,
+                   int          pos,
+                   GtkWidget   *widget)
+{
+  view->images[pos] = widget;
+
+  gtk_widget_set_parent (widget, GTK_WIDGET (view));
+}
+
+static void
+ws_album_view_clear (WsAlbumView *view)
+{
+  int i;
+
+  for (i = 0; i < view->n_images; i ++)
+    {
+      gtk_widget_unparent (view->images[i]);
+      /*g_object_unref (view->images[i]);*/
+    }
+
+  g_free (view->images);
+  view->n_images = 0;
+}
 
 void
 ws_album_view_reserve_space (WsAlbumView *view,
@@ -127,11 +132,7 @@ ws_album_view_reserve_space (WsAlbumView *view,
 
   g_return_if_fail (WS_IS_ALBUM_VIEW (view));
 
-  gtk_container_foreach (GTK_CONTAINER (view),
-                         remove_image, view);
-
-  g_free (view->images);
-
+  ws_album_view_clear (view);
   view->cur_image = image;
 
   if (image->is_album)
@@ -140,32 +141,33 @@ ws_album_view_reserve_space (WsAlbumView *view,
       view->images = g_malloc (image->n_subimages * sizeof (GtkWidget *));
       for (i = 0; i < image->n_subimages; i ++)
         {
+          GtkWidget *content_view;
           ImgurImage *img = image->subimages[i];
           g_assert (img != NULL);
 
           if (image->subimages[i]->is_animated)
-            view->images[i] = ws_video_view_new ();
+            content_view = ws_video_view_new ();
           else
-            view->images[i] = ws_image_view_new (image->subimages[i]->width,
-                                                 image->subimages[i]->height);
-          gtk_widget_show (view->images[i]);
+            content_view = ws_image_view_new (image->subimages[i]->width,
+                                              image->subimages[i]->height);
+          gtk_widget_show (content_view);
 
-          gtk_container_add (GTK_CONTAINER (view), view->images[i]);
+          ws_album_view_set (view, i, content_view);
         }
-
     }
   else
     {
+      GtkWidget *content_view;
       view->n_images = 1;
       view->images = g_malloc (1 * sizeof (GtkImage *));
       if (image->is_animated)
-        view->images[0] = ws_video_view_new ();
+        content_view = ws_video_view_new ();
       else
-        view->images[0] = ws_image_view_new (image->width, image->height);
+        content_view = ws_image_view_new (image->width, image->height);
 
-      gtk_widget_show (view->images[0]);
+      gtk_widget_show (content_view);
 
-      gtk_container_add (GTK_CONTAINER (view), view->images[0]);
+      ws_album_view_set (view, 0, content_view);
     }
 
   ws_album_view_update_adjustments (view);
@@ -202,9 +204,11 @@ ws_album_view_show_image (WsAlbumView *view,
 void
 ws_album_view_scroll_to_next (WsAlbumView *view)
 {
-  int height;
+  int height = 0;
+  int widget_height = gtk_widget_get_allocated_height (GTK_WIDGET (view));
+  int current_visible = current_visible_image (view);
 
-  current_visible_image (view, &height);
+  height = (current_visible * widget_height) + widget_height;
 
   gtk_adjustment_set_value (view->vadjustment, height);
 }
@@ -212,19 +216,16 @@ ws_album_view_scroll_to_next (WsAlbumView *view)
 void
 ws_album_view_scroll_to_prev (WsAlbumView *view)
 {
-  int height;
-  int current_visible = current_visible_image (view, &height);
+  int widget_height = gtk_widget_get_allocated_height (GTK_WIDGET (view));
+  int height = 0;
+  int current_visible = current_visible_image (view);//, &height);
 
-  g_message ("current visible: %d", current_visible);
+  g_assert (current_visible >= 0);
 
-  if (current_visible >= 2)
+  if (current_visible >= 1)
     {
-      height -= gtk_widget_get_allocated_height (view->images[current_visible - 2]);
-      height -= gtk_widget_get_allocated_height (view->images[current_visible - 1]);
-    }
-  else if (current_visible >= 1)
-    {
-      height -= gtk_widget_get_allocated_height (view->images[current_visible - 1]);
+      int cur_height = current_visible * widget_height;
+      height = cur_height - widget_height;
     }
 
   gtk_adjustment_set_value (view->vadjustment, height);
@@ -280,13 +281,61 @@ static gboolean
 ws_album_view_draw (GtkWidget *widget, cairo_t *ct)
 {
   WsAlbumView *view = WS_ALBUM_VIEW (widget);
-  double vvalue = gtk_adjustment_get_value (view->vadjustment);
-
-  cairo_translate (ct, 0, -vvalue);
+  int i;
 
   GTK_WIDGET_CLASS (ws_album_view_parent_class)->draw (widget, ct);
 
+  for (i = 0; i < view->n_images; i ++)
+    {
+      gtk_container_propagate_draw (GTK_CONTAINER (widget), view->images[i], ct);
+    }
+
   return GDK_EVENT_PROPAGATE;
+}
+
+
+static void
+ws_album_view_measure (WsAlbumView    *view,
+                       int            *minimum,
+                       int            *natural,
+                       GtkOrientation  orientation)
+{
+  if (orientation == GTK_ORIENTATION_HORIZONTAL)
+    {
+      int i, min, nat;
+
+      for (i = 0; i < view->n_images; i ++)
+        {
+          gtk_widget_get_preferred_width (view->images[i], &min, &nat);
+          *minimum = MAX (min, *minimum);
+          *natural = MAX (nat, *natural);
+        }
+    }
+  else
+    {
+      int i, min, nat;
+      *minimum = 0;
+      *natural = 0;
+
+      for (i = 0; i < view->n_images; i ++)
+        {
+          gtk_widget_get_preferred_height (view->images[i], &min, &nat);
+          *minimum += min;
+          *natural += nat;
+        }
+    }
+}
+
+static void
+preferred_width (GtkWidget *widget, int *min, int *nat)
+{
+  ws_album_view_measure (WS_ALBUM_VIEW (widget), min, nat, GTK_ORIENTATION_HORIZONTAL);
+}
+
+static void
+preferred_height (GtkWidget *widget, int *min, int *nat)
+{
+  ws_album_view_measure (WS_ALBUM_VIEW (widget), min, nat, GTK_ORIENTATION_VERTICAL);
 }
 
 static void
@@ -304,15 +353,9 @@ ws_album_view_size_allocate (GtkWidget     *widget,
   ws_album_view_update_adjustments (view);
 
 
-  y = 0;
+  y = - (int)gtk_adjustment_get_value (view->vadjustment);
   for (i = 0; i < view->n_images; i ++)
     {
-      int w, h;
-      ImgurImage *img = view->cur_image->is_album ? view->cur_image->subimages[i] : view->cur_image;
-      get_visible_size (view,
-                        img,
-                        &w, &h, NULL);
-
       child_allocation.x = 0;
       child_allocation.y = y;
       child_allocation.width = allocation->width;
@@ -320,15 +363,29 @@ ws_album_view_size_allocate (GtkWidget     *widget,
 
       gtk_widget_size_allocate (view->images[i], &child_allocation);
 
-      y += h;
+      y += child_allocation.height;
     }
 }
 
+static void
+ws_album_view_forall (GtkContainer *container,
+                      gboolean      include_internals,
+                      GtkCallback   callback,
+                      gpointer      callback_data)
+{
+  WsAlbumView *view = WS_ALBUM_VIEW (container);
+  int i;
+
+  for (i = 0; i < view->n_images; view ++)
+    {
+      (*callback) (view->images[i], callback_data);
+    }
+}
 
 static void
 ws_album_view_init (WsAlbumView *view)
 {
-  gtk_orientable_set_orientation (GTK_ORIENTABLE (view), GTK_ORIENTATION_VERTICAL);
+  gtk_widget_set_has_window (GTK_WIDGET (view), FALSE);
 }
 
 static void
@@ -336,12 +393,19 @@ ws_album_view_class_init (WsAlbumViewClass *class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (class);
   GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (class);
+  GtkContainerClass *container_class = GTK_CONTAINER_CLASS (class);
 
   object_class->set_property = ws_album_view_set_property;
   object_class->get_property = ws_album_view_get_property;
 
   widget_class->draw = ws_album_view_draw;
   widget_class->size_allocate = ws_album_view_size_allocate;
+  widget_class->get_preferred_width = preferred_width;
+  widget_class->get_preferred_height = preferred_height;
+
+  container_class->add = __empty;
+  container_class->remove = __empty;
+  container_class->forall = ws_album_view_forall;
 
   g_object_class_override_property (object_class, PROP_HADJUSTMENT, "hadjustment");
   g_object_class_override_property (object_class, PROP_VADJUSTMENT, "vadjustment");

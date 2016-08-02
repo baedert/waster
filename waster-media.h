@@ -24,7 +24,6 @@ struct _WsVideoView
   GtkWidget *area;
   GstElement *src;
   GstElement *sink;
-
 };
 
 

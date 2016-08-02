@@ -157,7 +157,8 @@ image_loaded_cb (GObject      *source_object,
   if (img->is_album)
     {
       int i;
-      g_message ("Loading %d images...", img->n_subimages);
+      char *title;
+      /*g_message ("Loading %d images...", img->n_subimages);*/
 
       for (i = 0; i < img->n_subimages; i ++)
         {
@@ -170,7 +171,11 @@ image_loaded_cb (GObject      *source_object,
 
         }
 
-      gtk_window_set_title (GTK_WINDOW (window), "[Album]");
+      title = g_strdup_printf ("[Album (%d)]", img->n_subimages);
+
+      gtk_window_set_title (GTK_WINDOW (window), title);
+
+      g_free (title);
     }
   else
     {

@@ -13,6 +13,8 @@ ws_image_view_new (int width, int height)
   GObject *obj = g_object_new (WS_TYPE_IMAGE_VIEW,
                                "vexpand", TRUE,
                                "fit-allocation", TRUE,
+                               "zoomable", FALSE,
+                               "rotatable", FALSE,
                                NULL);
   WS_IMAGE_VIEW (obj)->surface_width = width;
   WS_IMAGE_VIEW (obj)->surface_height = height;
