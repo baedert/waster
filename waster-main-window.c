@@ -95,6 +95,7 @@ prev_button_clicked_cb (GtkButton *button,
 {
   WsMainWindow *window = user_data;
 
+  show_prev_image (window);
 }
 
 WsMainWindow *
@@ -145,6 +146,7 @@ image_loaded_cb (GObject      *source_object,
 
   if (error != NULL)
     {
+      g_warning (__FUNCTION__);
       g_warning (error->message);
       return;
     }
@@ -190,9 +192,11 @@ gallery_loaded_cb (GObject      *source_object,
 
   ws_image_loader_load_gallery_finish (loader, result, &error);
 
+
   if (error != NULL)
     {
-      g_assert (FALSE);
+      g_warning ("%s(%d): %s", __FILE__, __LINE__, error->message);
+      return;
     }
 
   window->current_image_index = 0;
@@ -219,7 +223,7 @@ go_next_cb (GSimpleAction *action, GVariant *v, gpointer user_data)
 static void
 go_prev_cb (GSimpleAction *action, GVariant *v, gpointer user_data)
 {
-  WsMainWindow *window = user_data;
+  /*WsMainWindow *window = user_data;*/
 
   g_assert (0);
 }

@@ -137,7 +137,7 @@ ws_album_view_reserve_space (WsAlbumView *view,
   if (image->is_album)
     {
       view->n_images = image->n_subimages;
-      view->images = g_malloc (image->n_subimages * sizeof (GtkImage *));
+      view->images = g_malloc (image->n_subimages * sizeof (GtkWidget *));
       for (i = 0; i < image->n_subimages; i ++)
         {
           ImgurImage *img = image->subimages[i];
@@ -183,14 +183,17 @@ ws_album_view_show_image (WsAlbumView *view,
   else
     index = image->index;
 
-  g_assert (image->surface);
 
   if (image->is_animated)
     {
+      g_assert (WS_IS_VIDEO_VIEW (view->images[index]));
       g_message ("This is animated! URL: %s", image->link);
+      ws_video_view_set_image (WS_VIDEO_VIEW (view->images[index]),
+                               image);
     }
   else
     {
+      g_assert (image->surface);
       ws_image_view_set_surface (WS_IMAGE_VIEW (view->images[index]),
                                  image->surface);
     }
@@ -199,9 +202,9 @@ ws_album_view_show_image (WsAlbumView *view,
 void
 ws_album_view_scroll_to_next (WsAlbumView *view)
 {
-  double current_value = gtk_adjustment_get_value (view->vadjustment);
   int height;
-  int current_visible = current_visible_image (view, &height);
+
+  current_visible_image (view, &height);
 
   gtk_adjustment_set_value (view->vadjustment, height);
 }
@@ -212,10 +215,15 @@ ws_album_view_scroll_to_prev (WsAlbumView *view)
   int height;
   int current_visible = current_visible_image (view, &height);
 
+  g_message ("current visible: %d", current_visible);
 
   if (current_visible >= 2)
     {
       height -= gtk_widget_get_allocated_height (view->images[current_visible - 2]);
+      height -= gtk_widget_get_allocated_height (view->images[current_visible - 1]);
+    }
+  else if (current_visible >= 1)
+    {
       height -= gtk_widget_get_allocated_height (view->images[current_visible - 1]);
     }
 
@@ -274,8 +282,8 @@ ws_album_view_draw (GtkWidget *widget, cairo_t *ct)
   WsAlbumView *view = WS_ALBUM_VIEW (widget);
   double vvalue = gtk_adjustment_get_value (view->vadjustment);
 
-
   cairo_translate (ct, 0, -vvalue);
+
   GTK_WIDGET_CLASS (ws_album_view_parent_class)->draw (widget, ct);
 
   return GDK_EVENT_PROPAGATE;
@@ -288,13 +296,10 @@ ws_album_view_size_allocate (GtkWidget     *widget,
   WsAlbumView *view = WS_ALBUM_VIEW (widget);
   GtkAllocation child_allocation;
   int i, y;
-  int n_images;
 
-  gtk_widget_set_allocation (widget, allocation);
+  GTK_WIDGET_CLASS (ws_album_view_parent_class)->size_allocate (widget, allocation);
 
   if (!view->cur_image) return;
-
-  n_images = view->cur_image->is_album ? view->cur_image->n_subimages : 1;
 
   ws_album_view_update_adjustments (view);
 

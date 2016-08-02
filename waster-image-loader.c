@@ -6,37 +6,6 @@
 #include <libsoup/soup.h>
 
 
-
-static void
-print_call (RestProxyCall *call)
-{
-  RestParams *params;
-  GHashTable *ht;
-  GList *keys, *l;
-  GString *str = g_string_new (rest_proxy_call_get_method (call));
-  g_string_append (str, " ");
-  g_string_append (str, rest_proxy_call_get_function (call));
-
-  params = rest_proxy_call_get_params (call);
-  ht = rest_params_as_string_hash_table (params);
-
-  g_string_append_c (str, '?');
-
-  keys = g_hash_table_get_keys (ht);
-  for (l = keys; l; l = l->next)
-    {
-      char *k = l->data;
-      char *v = g_hash_table_lookup (ht, k);
-      g_string_append (str, k);
-      g_string_append (str, "=");
-      g_string_append (str, v);
-      g_string_append (str, "&");
-    }
-
-  g_message ("%s", str->str);
-}
-
-
 static void
 print_imgur_image (ImgurImage *img)
 {
@@ -98,23 +67,20 @@ ws_image_loader_load_gallery_threaded (GTask         *task,
   GError *error = NULL;
   WsImageLoader *loader = source_object;
   Waster *app = (Waster *)g_application_get_default ();
-  int i;
+  JsonParser *parser;
+  JsonObject *root;
+  int i, n_images;
 
   RestProxyCall *call = rest_proxy_new_call (app->proxy);
-  /*rest_proxy_call_set_function (call, "/gallery/hot/viral/0.json");*/
   rest_proxy_call_set_function (call, "gallery/hot/viral/0.json");
   rest_proxy_call_set_method (call, "GET");
-  /*char *auth = g_strdup_printf ("Bearer %s", oauth2_proxy_get_access_token (app->proxy));*/
-  /*rest_proxy_call_add_header (call, "Authorization", auth);*/
-
-  print_call (call);
 
   rest_proxy_call_sync (call, NULL);
 
-  JsonParser *parser = json_parser_new ();
+  parser = json_parser_new ();
   json_parser_load_from_data (parser, rest_proxy_call_get_payload (call), -1, &error);
 
-  JsonObject *root = json_node_get_object (json_parser_get_root (parser));
+  root = json_node_get_object (json_parser_get_root (parser));
 
   if (error)
     {
@@ -129,8 +95,8 @@ ws_image_loader_load_gallery_threaded (GTask         *task,
       return;
     }
 
-  JsonArray  *data_array = json_object_get_array_member (root, "data");
-  int n_images = json_array_get_length (data_array);
+  JsonArray *data_array = json_object_get_array_member (root, "data");
+  n_images = json_array_get_length (data_array);
 
   g_assert (loader);
   loader->images = (ImgurImage **) g_malloc (n_images * sizeof (ImgurImage *));
@@ -158,11 +124,10 @@ ws_image_loader_load_gallery_async (WsImageLoader       *loader,
                                     GAsyncReadyCallback  callback,
                                     gpointer             user_data)
 {
-  /*GTask *task = g_task_new (loader, cancellable, callback, user_data);*/
+  GTask *task = g_task_new (loader, cancellable, callback, user_data);
 
-  ws_image_loader_load_gallery_threaded (NULL, loader, NULL, NULL);
-  /*g_task_run_in_thread (task, ws_image_loader_load_gallery_threaded);*/
-  /*g_object_unref (task);*/
+  g_task_run_in_thread (task, ws_image_loader_load_gallery_threaded);
+  g_object_unref (task);
 }
 
 void
@@ -183,7 +148,6 @@ ws_image_loader_load_image_threaded (GTask         *task,
 
 {
   SoupSession *session;
-  SoupMessage *msg;
   GError *error = NULL;
   WsImageLoader *loader = source_object;
   ImgurImage *image = task_data;
@@ -206,6 +170,11 @@ ws_image_loader_load_image_threaded (GTask         *task,
         JsonObject *root;
         JsonArray  *data_array;
         int         n_subimages, i;
+
+
+        g_print ("\n%s\n", rest_proxy_call_get_payload (call));
+
+
         json_parser_load_from_data (parser, rest_proxy_call_get_payload (call), -1, NULL);
         root = json_node_get_object (json_parser_get_root (parser));
         data_array = json_object_get_array_member (root, "data");
@@ -231,43 +200,51 @@ ws_image_loader_load_image_threaded (GTask         *task,
       return;
     }
 
-
-  SoupMessage *message = soup_message_new ("GET", image->link);
-
-  soup_session_send_message (session, message);
-
-  GBytes *response;
-  g_object_get (message, "response-body-data", &response, NULL);
-  g_assert (response);
-
-  GInputStream *in_stream = g_memory_input_stream_new_from_bytes (response);
-
-  GdkPixbufAnimation *animation = gdk_pixbuf_animation_new_from_stream (in_stream,
-                                                                        NULL, &error);
-
-  if (error)
+  /* If the image s not anuimated (i.e. a mp4 video), we load it here. */
+  if (!image->is_animated)
     {
-      g_task_return_error (task, error);
+      GInputStream *in_stream;
+      GdkPixbufAnimation *animation;
+      GdkPixbuf *pixbuf;
+      cairo_surface_t *surface;
+      SoupMessage *message = soup_message_new ("GET", image->link);
+
+      g_message ("Loading %s", image->link);
+
+      soup_session_send_message (session, message);
+
+      GBytes *response;
+      g_object_get (message, "response-body-data", &response, NULL);
+
+      in_stream = g_memory_input_stream_new_from_bytes (response);
+
+      animation = gdk_pixbuf_animation_new_from_stream (in_stream,
+                                                        NULL, &error);
+
+      if (error)
+        {
+          g_task_return_error (task, error);
+
+          g_input_stream_close (in_stream, NULL, NULL);
+          g_object_unref (in_stream);
+          return;
+        }
+
+      pixbuf = gdk_pixbuf_animation_get_static_image (animation);
+
+      // XXX
+      surface = gdk_cairo_surface_create_from_pixbuf (pixbuf,
+                                                       1,
+                                                       NULL);
+      image->surface = surface;
 
       g_input_stream_close (in_stream, NULL, NULL);
       g_object_unref (in_stream);
-      return;
+
+      g_object_unref (animation);
+      g_object_unref (message);
+      g_object_unref (session);
     }
-
-  GdkPixbuf *pixbuf = gdk_pixbuf_animation_get_static_image (animation);
-
-  cairo_surface_t *surface = gdk_cairo_surface_create_from_pixbuf (pixbuf,
-                                                                   1,
-                                                                   NULL);
-
-  image->surface = surface;
-
-  g_input_stream_close (in_stream, NULL, NULL);
-  g_object_unref (in_stream);
-
-  g_object_unref (animation);
-  g_object_unref (message);
-  g_object_unref (session);
 
   g_task_return_pointer (task, image, NULL);
 }
@@ -378,5 +355,4 @@ ws_image_loader_init (WsImageLoader *loader)
 void
 ws_image_loader_class_init (WsImageLoaderClass *class)
 {
-  GObjectClass *object_class = G_OBJECT_CLASS (class);
 }

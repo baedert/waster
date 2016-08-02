@@ -3,6 +3,9 @@
 
 #include <gtk/gtk.h>
 #include <cairo/cairo.h>
+#include <gst/gst.h>
+
+#include "waster-image-loader.h"
 
 struct _WsImageView
 {
@@ -15,6 +18,11 @@ struct _WsImageView
 struct _WsVideoView
 {
   GtkFrame parent_instance;
+
+  GtkWidget *area;
+  GstElement *src;
+  GstElement *sink;
+
 };
 
 
@@ -28,16 +36,17 @@ typedef struct _WsVideoView WsVideoView;
 G_DECLARE_FINAL_TYPE (WsImageView, ws_image_view, WS, IMAGE_VIEW, GtkWidget);
 
 GtkWidget *ws_image_view_new ();
-void ws_image_view_set_surface (WsImageView *image_view, cairo_surface_t *surface);
-void ws_image_view_set_surface_size (WsImageView *image_view, int width, int height);
+void       ws_image_view_set_surface (WsImageView *image_view, cairo_surface_t *surface);
+void       ws_image_view_set_surface_size (WsImageView *image_view, int width, int height);
 
 
 
 
 #define WS_TYPE_VIDEO_VIEW ws_video_view_get_type()
-G_DECLARE_FINAL_TYPE (WsVideoView, ws_viewo_view, WS, VIDEO_VIEW, GtkFrame);
+G_DECLARE_FINAL_TYPE (WsVideoView, ws_video_view, WS, VIDEO_VIEW, GtkFrame);
 
 GtkWidget *ws_video_view_new ();
+void       ws_video_view_set_image (WsVideoView *view, ImgurImage *image);
 
 
 #endif

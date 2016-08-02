@@ -1,8 +1,9 @@
 project('waster', 'c')
 gtkdep = dependency('gtk+-3.0')
-restdep = dependency('rest-1.0')
+restdep = dependency('rest-0.7')
 soupdep = dependency('libsoup-2.4')
 jsondep = dependency('json-glib-1.0')
+gstdep  = dependency('gstreamer-video-1.0')
 
 
 gnome = import('gnome')
@@ -39,5 +40,6 @@ executable(
   dependencies: [gtkdep,
                  restdep,
                  soupdep,
-                 jsondep]
+                 jsondep,
+                 gstdep]
 )
