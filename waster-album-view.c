@@ -376,10 +376,18 @@ ws_album_view_forall (GtkContainer *container,
   WsAlbumView *view = WS_ALBUM_VIEW (container);
   int i;
 
-  for (i = 0; i < view->n_images; view ++)
+  for (i = 0; i < view->n_images; i ++)
     {
       (*callback) (view->images[i], callback_data);
     }
+}
+
+static void
+ws_album_view_finalize (GObject *object)
+{
+  WsAlbumView *view = WS_ALBUM_VIEW (object);
+
+  g_free (view->images);
 }
 
 static void
@@ -397,6 +405,7 @@ ws_album_view_class_init (WsAlbumViewClass *class)
 
   object_class->set_property = ws_album_view_set_property;
   object_class->get_property = ws_album_view_get_property;
+  object_class->finalize     = ws_album_view_finalize;
 
   widget_class->draw = ws_album_view_draw;
   widget_class->size_allocate = ws_album_view_size_allocate;

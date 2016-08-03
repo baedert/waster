@@ -5,13 +5,14 @@
 #include <json-glib/json-glib.h>
 #include <libsoup/soup.h>
 
-
+#if 0
 static void
 print_imgur_image (ImgurImage *img)
 {
   g_message ("Image -- ID: %s , link: %s , album: %d , title: '%s'",
              img->id, img->link, img->is_album, img->title);
 }
+#endif
 
 static void
 imgur_image_init_from_json (ImgurImage *img,
@@ -48,15 +49,6 @@ imgur_image_init_from_json (ImgurImage *img,
 G_DEFINE_TYPE (WsImageLoader, ws_image_loader, G_TYPE_OBJECT);
 
 typedef struct _WsImageLoader WsImageLoader;
-
-
-  /*
-   * TODO:
-   *
-   * 1) Actual GIFs. Do they even exist on imgur or are they just encoding all the gifs as videos?
-   * 2) Videos. gifv/mp4/webm available!
-   *
-   */
 
 static void
 ws_image_loader_load_gallery_threaded (GTask         *task,
@@ -149,7 +141,6 @@ ws_image_loader_load_image_threaded (GTask         *task,
 {
   SoupSession *session;
   GError *error = NULL;
-  WsImageLoader *loader = source_object;
   ImgurImage *image = task_data;
 
   session = soup_session_new ();
@@ -169,7 +160,7 @@ ws_image_loader_load_image_threaded (GTask         *task,
         JsonParser *parser = json_parser_new ();
         JsonObject *root;
         JsonArray  *data_array;
-        int         n_subimages, i;
+        int         i;
 
 
         g_print ("\n%s\n", rest_proxy_call_get_payload (call));
@@ -195,6 +186,7 @@ ws_image_loader_load_image_threaded (GTask         *task,
 
 
       g_free (function);
+      g_object_unref (call);
 
       g_task_return_pointer (task, image, NULL);
       return;
@@ -208,6 +200,9 @@ ws_image_loader_load_image_threaded (GTask         *task,
       GdkPixbuf *pixbuf;
       cairo_surface_t *surface;
       SoupMessage *message = soup_message_new ("GET", image->link);
+      gboolean has_alpha;
+      cairo_t *ct;
+
 
       g_message ("Loading %s", image->link);
 
@@ -227,15 +222,22 @@ ws_image_loader_load_image_threaded (GTask         *task,
 
           g_input_stream_close (in_stream, NULL, NULL);
           g_object_unref (in_stream);
+          g_bytes_unref (response);
           return;
         }
 
       pixbuf = gdk_pixbuf_animation_get_static_image (animation);
+      g_object_get (pixbuf, "has-alpha", &has_alpha, NULL);
 
-      // XXX
-      surface = gdk_cairo_surface_create_from_pixbuf (pixbuf,
-                                                       1,
-                                                       NULL);
+      surface = cairo_image_surface_create (has_alpha ? CAIRO_FORMAT_ARGB32 : CAIRO_FORMAT_RGB24,
+                                            gdk_pixbuf_get_width (pixbuf),
+                                            gdk_pixbuf_get_height (pixbuf));
+
+      ct = cairo_create (surface);
+      gdk_cairo_set_source_pixbuf (ct, pixbuf, 0.0, 0.0);
+      cairo_paint (ct);
+      cairo_destroy (ct);
+
       image->surface = surface;
 
       g_input_stream_close (in_stream, NULL, NULL);
@@ -244,6 +246,7 @@ ws_image_loader_load_image_threaded (GTask         *task,
       g_object_unref (animation);
       g_object_unref (message);
       g_object_unref (session);
+      g_bytes_unref (response);
     }
 
   g_task_return_pointer (task, image, NULL);
@@ -283,60 +286,6 @@ ws_image_loader_load_image_finish (WsImageLoader *loader,
 
   return g_task_propagate_pointer (G_TASK (result), error);
 }
-
-
-
-void
-ws_image_loader_load_album_threaded (GTask         *task,
-                                     gpointer       source_object,
-                                     gpointer       task_data,
-                                     GCancellable *cancellable)
-{
-  WsImageLoader *loader = source_object;
-  ImgurImage *album = task_data;
-  ImgurImage *image;
-
-  g_assert (album->is_album);
-
-
-
-
-}
-
-void
-ws_image_loader_load_album_async (WsImageLoader       *loader,
-                                  ImgurImage          *album,
-                                  GCancellable        *cancellable,
-                                  GAsyncReadyCallback  callback,
-                                  gpointer             user_data)
-{
-  GTask *task;
-
-  g_return_if_fail (album != NULL);
-  g_return_if_fail (album->is_album);
-
-  task = g_task_new (loader, cancellable, callback, user_data);
-
-  g_task_set_task_data (task, album, NULL);
-  g_task_run_in_thread (task, ws_image_loader_load_album_threaded);
-
-  g_object_unref (task);
-}
-
-ImgurImage *
-ws_image_loader_load_album_finish (WsImageLoader  *loader,
-                                   GAsyncResult   *result,
-                                   GError        **error)
-{
-  g_return_val_if_fail (g_task_is_valid (result, loader), NULL);
-
-  return g_task_propagate_pointer (G_TASK (result), error);
-}
-
-
-
-
-
 
 /* ---------------------------------------------------------------------------------- */
 
