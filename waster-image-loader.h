@@ -63,15 +63,4 @@ void ws_image_loader_load_image_async (WsImageLoader       *loader,
 ImgurImage * ws_image_loader_load_image_finish (WsImageLoader  *loader,
                                                GAsyncResult    *result,
                                                GError         **error);
-
-
-void ws_image_loader_load_album_async (WsImageLoader       *loader,
-                                       ImgurImage          *album,
-                                       GCancellable       *cancellable,
-                                       GAsyncReadyCallback  callback,
-                                       gpointer             user_data);
-ImgurImage *ws_image_loader_load_album_finish (WsImageLoader  *loader,
-                                               GAsyncResult   *result,
-                                               GError        **error);
-
 #endif

@@ -5,6 +5,7 @@
 #include "waster-album-view.h"
 #include "waster-impostor.h"
 
+#define DEBUG 1
 
 int
 main (int    argc,
@@ -18,6 +19,10 @@ main (int    argc,
   g_type_ensure (WS_TYPE_INITIAL_STATE);
   g_type_ensure (WS_TYPE_ALBUM_VIEW);
   g_type_ensure (WS_TYPE_IMPOSTOR);
+
+#ifdef DEBUG
+  g_setenv ("G_MESSAGES_DEBUG", "ALL", TRUE);
+#endif
 
   app = waster_new ();
 

@@ -9,7 +9,6 @@
 
 G_DECLARE_FINAL_TYPE (WsMainWindow, ws_main_window, WS, MAIN_WINDOW, GtkApplicationWindow);
 
-
 WsMainWindow *ws_main_window_new ();
 
 #endif

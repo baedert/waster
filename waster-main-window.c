@@ -5,6 +5,7 @@
 #include "waster-impostor.h"
 #include "waster.h"
 
+#define LOOKAHEAD 1
 
 struct _WsMainWindow
 {
@@ -19,6 +20,8 @@ struct _WsMainWindow
   GtkWidget *impostor;
 
   WsImageLoader *loader;
+
+  GCancellable* cancellables[LOOKAHEAD + 1];
 
   guint current_image_index;
 };
@@ -38,8 +41,6 @@ show_next_image (WsMainWindow *window)
 {
   WsImageLoader *loader = window->loader;
 
-  g_message (__FUNCTION__);
-
   gtk_stack_set_transition_type (GTK_STACK (window->image_stack),
                                  GTK_STACK_TRANSITION_TYPE_NONE);
   ws_impostor_clone (WS_IMPOSTOR (window->impostor),
@@ -48,12 +49,20 @@ show_next_image (WsMainWindow *window)
   gtk_stack_set_transition_type (GTK_STACK (window->image_stack),
                                  GTK_STACK_TRANSITION_TYPE_SLIDE_LEFT_RIGHT);
 
+  ws_album_view_clear (WS_ALBUM_VIEW (window->album_view));
+
+  if (G_IS_CANCELLABLE (window->cancellables[0]))
+    {
+      g_cancellable_cancel (window->cancellables[0]);
+      g_object_unref (window->cancellables[0]);
+    }
+
+  window->cancellables[0] = g_cancellable_new ();
 
   window->current_image_index ++;
-  g_message ("Loading image %u", window->current_image_index);
   ws_image_loader_load_image_async (loader,
                                     loader->images[window->current_image_index],
-                                    NULL,
+                                    window->cancellables[0],
                                     image_loaded_cb,
                                     window);
 
@@ -122,7 +131,12 @@ subimage_loaded_cb (GObject *source_object,
 
   loaded_image = ws_image_loader_load_image_finish (loader, result, &error);
 
-  if (error)
+  if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_FAILED))
+    {
+      g_message ("Subimage loading cancelled");
+      return;
+    }
+  else if (error)
     {
       g_warning ("%s", error->message);
       return;
@@ -144,7 +158,12 @@ image_loaded_cb (GObject      *source_object,
 
   img = ws_image_loader_load_image_finish (loader, result, &error);
 
-  if (error != NULL)
+
+  if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_FAILED))
+    {
+      g_message ("image lading cancelled");
+    }
+  else if (error != NULL)
     {
       g_warning (__FUNCTION__);
       g_warning (error->message);
@@ -158,14 +177,13 @@ image_loaded_cb (GObject      *source_object,
     {
       int i;
       char *title;
-      /*g_message ("Loading %d images...", img->n_subimages);*/
 
       for (i = 0; i < img->n_subimages; i ++)
         {
           ImgurImage *subimg = img->subimages[i];
           ws_image_loader_load_image_async (loader,
                                             subimg,
-                                            NULL,
+                                            window->cancellables[0],
                                             subimage_loaded_cb,
                                             window);
 
@@ -204,22 +222,21 @@ gallery_loaded_cb (GObject      *source_object,
       return;
     }
 
-  window->current_image_index = 0;
+  /* -1 so show_next_image will incrase it to 0 and load that */
+  window->current_image_index = -1;
   gtk_stack_set_visible_child_name (GTK_STACK (window->main_stack), "image");
   gtk_stack_set_visible_child_name (GTK_STACK (window->image_stack), "album");
 
-  /* Gallery is here, we can start loading images */
-  ws_image_loader_load_image_async (loader,
-                                    loader->images[window->current_image_index],
-                                    NULL,
-                                    image_loaded_cb,
-                                    window);
+  show_next_image (window);
 }
 
 static void
 go_next_cb (GSimpleAction *action, GVariant *v, gpointer user_data)
 {
   WsMainWindow *window = user_data;
+
+  if (window->loader->images == NULL)
+    return;
 
   show_next_image (window);
 }
@@ -228,7 +245,10 @@ go_next_cb (GSimpleAction *action, GVariant *v, gpointer user_data)
 static void
 go_prev_cb (GSimpleAction *action, GVariant *v, gpointer user_data)
 {
-  /*WsMainWindow *window = user_data;*/
+  WsMainWindow *window = user_data;
+
+  if (window->loader->images == NULL)
+    return;
 
   g_assert (0);
 }
@@ -273,6 +293,7 @@ ws_main_window_init (WsMainWindow *win)
                                    win);
 
   win->loader = ws_image_loader_new ();
+  win->cancellables[0] = win->cancellables[1] = NULL;
 
   if (waster_is_proxy_inited (app))
     {
@@ -287,7 +308,6 @@ ws_main_window_init (WsMainWindow *win)
     {
       gtk_stack_set_visible_child_name (GTK_STACK (win->main_stack), "initial_state");
     }
-
 }
 
 void

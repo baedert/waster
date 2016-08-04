@@ -156,6 +156,12 @@ ws_image_loader_load_image_threaded (GTask         *task,
 
       rest_proxy_call_sync (call, NULL);
 
+      if (cancellable != NULL && g_cancellable_is_cancelled (cancellable))
+        {
+          g_task_return_pointer (task, NULL, NULL);
+          return;
+        }
+
       {
         JsonParser *parser = json_parser_new ();
         JsonObject *root;
@@ -192,7 +198,7 @@ ws_image_loader_load_image_threaded (GTask         *task,
       return;
     }
 
-  /* If the image s not anuimated (i.e. a mp4 video), we load it here. */
+  /* If the image s not anuimated (i.e. not a mp4 video), we load it here. */
   if (!image->is_animated)
     {
       GInputStream *in_stream;
@@ -216,6 +222,12 @@ ws_image_loader_load_image_threaded (GTask         *task,
       animation = gdk_pixbuf_animation_new_from_stream (in_stream,
                                                         NULL, &error);
 
+      if (cancellable != NULL && g_cancellable_is_cancelled (cancellable))
+        {
+          g_task_return_pointer (task, NULL, NULL);
+          return;
+        }
+
       if (error)
         {
           g_task_return_error (task, error);
@@ -237,6 +249,12 @@ ws_image_loader_load_image_threaded (GTask         *task,
       gdk_cairo_set_source_pixbuf (ct, pixbuf, 0.0, 0.0);
       cairo_paint (ct);
       cairo_destroy (ct);
+
+      if (cancellable != NULL && g_cancellable_is_cancelled (cancellable))
+        {
+          g_task_return_pointer (task, NULL, NULL);
+          return;
+        }
 
       image->surface = surface;
 

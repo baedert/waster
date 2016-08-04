@@ -109,7 +109,7 @@ ws_album_view_set (WsAlbumView *view,
   gtk_widget_set_parent (widget, GTK_WIDGET (view));
 }
 
-static void
+void
 ws_album_view_clear (WsAlbumView *view)
 {
   int i;
@@ -121,6 +121,7 @@ ws_album_view_clear (WsAlbumView *view)
     }
 
   g_free (view->images);
+  view->images = NULL;
   view->n_images = 0;
 }
 
@@ -394,6 +395,8 @@ static void
 ws_album_view_init (WsAlbumView *view)
 {
   gtk_widget_set_has_window (GTK_WIDGET (view), FALSE);
+  view->images = NULL;
+  view->n_images = 0;
 }
 
 static void
