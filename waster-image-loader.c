@@ -154,6 +154,8 @@ ws_image_loader_load_image_threaded (GTask         *task,
       rest_proxy_call_set_function (call, function);
       rest_proxy_call_set_method (call, "GET");
 
+      g_free (function);
+
       rest_proxy_call_sync (call, NULL);
 
       if (cancellable != NULL && g_cancellable_is_cancelled (cancellable))
@@ -162,36 +164,31 @@ ws_image_loader_load_image_threaded (GTask         *task,
           return;
         }
 
-      {
-        JsonParser *parser = json_parser_new ();
-        JsonObject *root;
-        JsonArray  *data_array;
-        int         i;
+      JsonParser *parser = json_parser_new ();
+      JsonObject *root;
+      JsonArray  *data_array;
+      int         i;
 
+      //XXX
+      /*g_print ("\n%s\n", rest_proxy_call_get_payload (call));*/
 
-        g_print ("\n%s\n", rest_proxy_call_get_payload (call));
+      json_parser_load_from_data (parser, rest_proxy_call_get_payload (call), -1, NULL);
+      root = json_node_get_object (json_parser_get_root (parser));
+      data_array = json_object_get_array_member (root, "data");
 
+      image->n_subimages = (int)json_array_get_length (data_array);
+      image->subimages = g_malloc (image->n_subimages * sizeof (ImgurImage *));
+      for (i = 0; i < image->n_subimages; i ++)
+        {
+          JsonObject *img_json = json_array_get_object_element (data_array, i);
+          image->subimages[i] = g_malloc (sizeof (ImgurImage));
+          imgur_image_init_from_json (image->subimages[i], img_json);
+          image->subimages[i]->index = i;
+          image->subimages[i]->is_album = FALSE;
+        }
 
-        json_parser_load_from_data (parser, rest_proxy_call_get_payload (call), -1, NULL);
-        root = json_node_get_object (json_parser_get_root (parser));
-        data_array = json_object_get_array_member (root, "data");
+      g_object_unref (parser);
 
-        image->n_subimages = (int)json_array_get_length (data_array);
-        image->subimages = g_malloc (image->n_subimages * sizeof (ImgurImage *));
-        for (i = 0; i < image->n_subimages; i ++)
-          {
-            JsonObject *img_json = json_array_get_object_element (data_array, i);
-            image->subimages[i] = g_malloc (sizeof (ImgurImage));
-            imgur_image_init_from_json (image->subimages[i], img_json);
-            image->subimages[i]->index = i;
-            image->subimages[i]->is_album = FALSE;
-          }
-
-        g_object_unref (parser);
-      }
-
-
-      g_free (function);
       g_object_unref (call);
 
       g_task_return_pointer (task, image, NULL);

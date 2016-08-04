@@ -131,13 +131,15 @@ subimage_loaded_cb (GObject *source_object,
 
   loaded_image = ws_image_loader_load_image_finish (loader, result, &error);
 
-  if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_FAILED))
+  if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
     {
       g_message ("Subimage loading cancelled");
+      g_error_free (error);
       return;
     }
   else if (error)
     {
+      g_error_free (error);
       g_warning ("%s", error->message);
       return;
     }
@@ -159,14 +161,17 @@ image_loaded_cb (GObject      *source_object,
   img = ws_image_loader_load_image_finish (loader, result, &error);
 
 
-  if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_FAILED))
+  if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
     {
+      g_error_free (error);
       g_message ("image lading cancelled");
+      return;
     }
   else if (error != NULL)
     {
       g_warning (__FUNCTION__);
       g_warning (error->message);
+      g_error_free (error);
       return;
     }
 
