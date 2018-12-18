@@ -195,10 +195,10 @@ ws_album_view_show_image (WsAlbumView *view,
     }
   else
     {
-      g_assert (image->surface);
+      g_assert (image->texture);
       g_assert (WS_IS_IMAGE_VIEW (view->images[index]));
-      ws_image_view_set_surface (WS_IMAGE_VIEW (view->images[index]),
-                                 image->surface);
+      ws_image_view_set_contents (WS_IMAGE_VIEW (view->images[index]),
+                                  image->texture);
     }
 }
 
@@ -350,21 +350,6 @@ ws_album_view_size_allocate (GtkWidget *widget,
 }
 
 static void
-ws_album_view_forall (GtkContainer *container,
-                      gboolean      include_internals,
-                      GtkCallback   callback,
-                      gpointer      callback_data)
-{
-  WsAlbumView *view = WS_ALBUM_VIEW (container);
-  int i;
-
-  for (i = 0; i < view->n_images; i ++)
-    {
-      (*callback) (view->images[i], callback_data);
-    }
-}
-
-static void
 ws_album_view_finalize (GObject *object)
 {
   WsAlbumView *view = WS_ALBUM_VIEW (object);
@@ -396,7 +381,6 @@ ws_album_view_class_init (WsAlbumViewClass *class)
 
   container_class->add = __empty;
   container_class->remove = __empty;
-  container_class->forall = ws_album_view_forall;
 
   g_object_class_override_property (object_class, PROP_HADJUSTMENT, "hadjustment");
   g_object_class_override_property (object_class, PROP_VADJUSTMENT, "vadjustment");

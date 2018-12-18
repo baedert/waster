@@ -11,7 +11,8 @@ struct _WsImageView
 {
   GtkWidget parent_instance;
 
-  cairo_surface_t *surface;
+  GtkWidget *picture;
+
   int surface_width;
   int surface_height;
 };
@@ -36,8 +37,11 @@ typedef struct _WsVideoView WsVideoView;
 G_DECLARE_FINAL_TYPE (WsImageView, ws_image_view, WS, IMAGE_VIEW, GtkWidget);
 
 GtkWidget *ws_image_view_new ();
-void       ws_image_view_set_surface (WsImageView *image_view, cairo_surface_t *surface);
-void       ws_image_view_set_surface_size (WsImageView *image_view, int width, int height);
+void       ws_image_view_set_contents     (WsImageView  *image_view,
+                                           GdkPaintable *paintable);
+void       ws_image_view_set_content_size (WsImageView  *image_view,
+                                           int           width,
+                                           int           height);
 
 
 

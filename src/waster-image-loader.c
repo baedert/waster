@@ -43,18 +43,18 @@ imgur_image_init_from_json (ImgurImage *img,
 
 
   img->index = -1;
-  img->surface = NULL;
+  img->texture = NULL;
 }
 
 G_DEFINE_TYPE (WsImageLoader, ws_image_loader, G_TYPE_OBJECT);
 
 typedef struct _WsImageLoader WsImageLoader;
 
-typedef struct 
+typedef struct
 {
   WsImageLoader *loader;
   ImgurImage *image;
-  gpointer user_data;
+  GTask *task;
 } LoaderData;
 
 static void
@@ -64,11 +64,13 @@ gallery_call_finished_cb (GObject      *source_object,
 {
   RestProxyCall *call = REST_PROXY_CALL (source_object);
   LoaderData *data = user_data;
+  GTask *task = data->task;
   WsImageLoader *loader = data->loader;
   GError *error = NULL;
   JsonParser *parser;
   JsonObject *root;
   int i, n_images;
+  g_message (__FUNCTION__);
 
   rest_proxy_call_invoke_finish (call, result, &error);
   g_assert_no_error (error);
@@ -110,6 +112,7 @@ gallery_call_finished_cb (GObject      *source_object,
   g_object_unref (parser);
   g_object_unref (call);
 
+  g_task_return_boolean (task, TRUE);
 
   loader->n_images = n_images;
 }
@@ -120,6 +123,7 @@ ws_image_loader_load_gallery_async (WsImageLoader       *loader,
                                     GAsyncReadyCallback  callback,
                                     gpointer             user_data)
 {
+  GTask *task;
   Waster *app = (Waster *)g_application_get_default ();
   LoaderData *data;
   RestProxyCall *call = rest_proxy_new_call (app->proxy);
@@ -127,9 +131,11 @@ ws_image_loader_load_gallery_async (WsImageLoader       *loader,
   rest_proxy_call_set_function (call, "gallery/hot/viral/0.json");
   rest_proxy_call_set_method (call, "GET");
 
+  task = g_task_new (loader, cancellable, callback, user_data);
+
   data = g_new (LoaderData, 1);
   data->loader = loader;
-  data->user_data = user_data;
+  data->task = task;
 
   rest_proxy_call_invoke_async (call,
                                 cancellable,
@@ -145,143 +151,6 @@ ws_image_loader_load_gallery_finish (WsImageLoader  *loader,
   g_return_if_fail (g_task_is_valid (result, loader));
 }
 
-
-
-static void
-ws_image_loader_load_image_threaded (GTask         *task,
-                                     gpointer       source_object,
-                                     gpointer       task_data,
-                                     GCancellable *cancellable)
-
-{
-  SoupSession *session;
-  GError *error = NULL;
-  ImgurImage *image = task_data;
-
-  session = soup_session_new ();
-
-  if (image->is_album)
-    {
-      Waster *waster = (Waster *) g_application_get_default ();
-      char *function = g_strdup_printf ("album/%s/images", image->id);
-
-      RestProxyCall *call = rest_proxy_new_call (waster->proxy);
-      rest_proxy_call_set_function (call, function);
-      rest_proxy_call_set_method (call, "GET");
-
-      g_free (function);
-
-      /*rest_proxy_call_sync (call, NULL);*/
-
-      if (cancellable != NULL && g_cancellable_is_cancelled (cancellable))
-        {
-          g_task_return_pointer (task, NULL, NULL);
-          return;
-        }
-
-      JsonParser *parser = json_parser_new ();
-      JsonObject *root;
-      JsonArray  *data_array;
-      int         i;
-
-      //XXX
-      /*g_print ("\n%s\n", rest_proxy_call_get_payload (call));*/
-
-      json_parser_load_from_data (parser, rest_proxy_call_get_payload (call), -1, NULL);
-      root = json_node_get_object (json_parser_get_root (parser));
-      data_array = json_object_get_array_member (root, "data");
-
-      image->n_subimages = (int)json_array_get_length (data_array);
-      image->subimages = g_malloc (image->n_subimages * sizeof (ImgurImage *));
-      for (i = 0; i < image->n_subimages; i ++)
-        {
-          JsonObject *img_json = json_array_get_object_element (data_array, i);
-          image->subimages[i] = g_malloc (sizeof (ImgurImage));
-          imgur_image_init_from_json (image->subimages[i], img_json);
-          image->subimages[i]->index = i;
-          image->subimages[i]->is_album = FALSE;
-        }
-
-      g_object_unref (parser);
-
-      g_object_unref (call);
-
-      g_task_return_pointer (task, image, NULL);
-      return;
-    }
-
-  /* If the image s not animated (i.e. not a mp4 video), we load it here. */
-  if (!image->is_animated)
-    {
-      GInputStream *in_stream;
-      GdkPixbufAnimation *animation;
-      GdkPixbuf *pixbuf;
-      cairo_surface_t *surface;
-      SoupMessage *message = soup_message_new ("GET", image->link);
-      gboolean has_alpha;
-      cairo_t *ct;
-
-
-      g_message ("Loading %s", image->link);
-
-      soup_session_send_message (session, message);
-
-      GBytes *response;
-      g_object_get (message, "response-body-data", &response, NULL);
-
-      in_stream = g_memory_input_stream_new_from_bytes (response);
-
-      animation = gdk_pixbuf_animation_new_from_stream (in_stream,
-                                                        NULL, &error);
-
-      if (cancellable != NULL && g_cancellable_is_cancelled (cancellable))
-        {
-          g_task_return_pointer (task, NULL, NULL);
-          return;
-        }
-
-      if (error)
-        {
-          g_task_return_error (task, error);
-
-          g_input_stream_close (in_stream, NULL, NULL);
-          g_object_unref (in_stream);
-          g_bytes_unref (response);
-          return;
-        }
-
-      pixbuf = gdk_pixbuf_animation_get_static_image (animation);
-      g_object_get (pixbuf, "has-alpha", &has_alpha, NULL);
-
-      surface = cairo_image_surface_create (has_alpha ? CAIRO_FORMAT_ARGB32 : CAIRO_FORMAT_RGB24,
-                                            gdk_pixbuf_get_width (pixbuf),
-                                            gdk_pixbuf_get_height (pixbuf));
-
-      ct = cairo_create (surface);
-      gdk_cairo_set_source_pixbuf (ct, pixbuf, 0.0, 0.0);
-      cairo_paint (ct);
-      cairo_destroy (ct);
-
-      if (cancellable != NULL && g_cancellable_is_cancelled (cancellable))
-        {
-          g_task_return_pointer (task, NULL, NULL);
-          return;
-        }
-
-      image->surface = surface;
-
-      g_input_stream_close (in_stream, NULL, NULL);
-      g_object_unref (in_stream);
-
-      g_object_unref (animation);
-      g_object_unref (message);
-      g_object_unref (session);
-      g_bytes_unref (response);
-    }
-
-  g_task_return_pointer (task, image, NULL);
-}
-
 static void
 image_call_finished_cb (GObject      *source_object,
                         GAsyncResult *result,
@@ -289,9 +158,8 @@ image_call_finished_cb (GObject      *source_object,
 {
   RestProxyCall *call = REST_PROXY_CALL (source_object);
   GError *error = NULL;
-  Waster *waster = (Waster *) g_application_get_default ();
   LoaderData *data = user_data;
-  WsImageLoader *loader = data->loader;
+  GTask *task = data->task;
   ImgurImage *image = data->image;
   JsonParser *parser = json_parser_new ();
   JsonObject *root;
@@ -299,7 +167,11 @@ image_call_finished_cb (GObject      *source_object,
   int i;
 
   rest_proxy_call_invoke_finish (call, result, &error);
-  g_assert_no_error (error);
+  if (error)
+    {
+      g_task_return_error (task, error);
+      return;
+    }
 
   json_parser_load_from_data (parser, rest_proxy_call_get_payload (call), -1, NULL);
   root = json_node_get_object (json_parser_get_root (parser));
@@ -318,7 +190,7 @@ image_call_finished_cb (GObject      *source_object,
 
   g_object_unref (parser);
 
-  /*g_task_return_pointer (task, image, NULL);*/
+  g_task_return_pointer (task, image, NULL);
 }
 
 void
@@ -328,29 +200,92 @@ ws_image_loader_load_image_async (WsImageLoader       *loader,
                                   GAsyncReadyCallback  callback,
                                   gpointer             user_data)
 {
+  GTask *task;
   Waster *app = (Waster *)g_application_get_default ();
-  LoaderData *data;
-  RestProxyCall *call = rest_proxy_new_call (app->proxy);
-  char *function;
 
-  /* XXX This assert ensures that we only take the code path that was previously covered
-   * by a RestProxyCall. Fix the other one later. */
-  g_assert (image->is_album);
+  task = g_task_new (loader, cancellable, callback, user_data);
 
-  function = g_strdup_printf ("album/%s/images", image->id);
+  if (image->is_album)
+    {
+      LoaderData *data;
+      char *function;
+      RestProxyCall *call = rest_proxy_new_call (app->proxy);
 
-  rest_proxy_call_take_function (call, g_strdup_printf ("album/%s/images", image->id));
-  rest_proxy_call_set_method (call, "GET");
+      function = g_strdup_printf ("album/%s/images", image->id);
 
-  data = g_new (LoaderData, 1);
-  data->loader = loader;
-  data->user_data = user_data;
-  data->image = image;
+      rest_proxy_call_take_function (call, g_strdup_printf ("album/%s/images", image->id));
+      rest_proxy_call_set_method (call, "GET");
 
-  rest_proxy_call_invoke_async (call,
-                                cancellable,
-                                image_call_finished_cb,
-                                data);
+      data = g_new (LoaderData, 1);
+      data->loader = loader;
+      data->image = image;
+      data->task = task;
+
+      rest_proxy_call_invoke_async (call,
+                                    cancellable,
+                                    image_call_finished_cb,
+                                    data);
+    }
+  else
+    {
+      g_warning ("Non album image!");
+      GInputStream *in_stream;
+      GdkPixbufAnimation *animation;
+      GdkPixbuf *pixbuf;
+      SoupMessage *message = soup_message_new ("GET", image->link);
+      SoupSession *session;
+      GError *error = NULL;
+
+      session = soup_session_new ();
+
+      g_message ("Loading %s", image->link);
+
+      soup_session_send_message (session, message);
+
+      GBytes *response;
+      g_object_get (message, "response-body-data", &response, NULL);
+
+      in_stream = g_memory_input_stream_new_from_bytes (response);
+
+      animation = gdk_pixbuf_animation_new_from_stream (in_stream, NULL, &error);
+
+      if (cancellable != NULL && g_cancellable_is_cancelled (cancellable))
+        {
+          g_task_return_pointer (task, NULL, NULL);
+          return;
+        }
+
+      if (error)
+        {
+          g_message ("%s: %s", __FUNCTION__, error->message);
+
+          g_task_return_error (task, error);
+
+          g_input_stream_close (in_stream, NULL, NULL);
+          g_object_unref (in_stream);
+          g_bytes_unref (response);
+          return;
+        }
+
+      pixbuf = gdk_pixbuf_animation_get_static_image (animation);
+      image->texture = gdk_texture_new_for_pixbuf (pixbuf);
+
+      if (cancellable != NULL && g_cancellable_is_cancelled (cancellable))
+        {
+          g_task_return_pointer (task, NULL, NULL);
+          return;
+        }
+
+      g_input_stream_close (in_stream, NULL, NULL);
+      g_object_unref (in_stream);
+
+      g_object_unref (animation);
+      g_object_unref (message);
+      g_object_unref (session);
+      g_bytes_unref (response);
+
+      g_task_return_pointer (task, image, NULL);
+    }
 }
 
 ImgurImage *

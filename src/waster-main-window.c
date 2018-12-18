@@ -126,7 +126,6 @@ subimage_loaded_cb (GObject *source_object,
   WsImageLoader *loader = WS_IMAGE_LOADER (source_object);
   ImgurImage *loaded_image;
 
-
   g_message ("Subimage loaded!");
 
   loaded_image = ws_image_loader_load_image_finish (loader, result, &error);
@@ -144,8 +143,9 @@ subimage_loaded_cb (GObject *source_object,
       return;
     }
 
-  ws_album_view_show_image (WS_ALBUM_VIEW (window->album_view),
-                            loaded_image);
+  if (loaded_image)
+    ws_album_view_show_image (WS_ALBUM_VIEW (window->album_view),
+                              loaded_image);
 }
 
 static void

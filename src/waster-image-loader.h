@@ -4,6 +4,7 @@
 #include <glib-object.h>
 #include <glib.h>
 #include <gio/gio.h>
+#include <gtk/gtk.h>
 #include <cairo-gobject.h>
 #include <cairo/cairo.h>
 
@@ -13,11 +14,11 @@ struct _ImgurImage
   gchar *id;
   gchar *title;
   gchar *link;
-  cairo_surface_t *surface;
-  gboolean is_album;
   int width;
   int height;
-  gboolean is_animated;
+  guint is_animated : 1;
+  guint is_album : 1;
+  GdkTexture *texture;
 
   int n_subimages;
   struct _ImgurImage **subimages;
