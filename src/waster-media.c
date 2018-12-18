@@ -12,21 +12,9 @@ ws_image_view_new (int width,
 {
   GObject *obj = g_object_new (WS_TYPE_IMAGE_VIEW,
                                NULL);
-  WS_IMAGE_VIEW (obj)->surface_width = width;
-  WS_IMAGE_VIEW (obj)->surface_height = height;
 
   return GTK_WIDGET (obj);
 }
-
-void
-ws_image_view_set_cotent_size (WsImageView *view,
-                               int          width,
-                               int          height)
-{
-  view->surface_width = width;
-  view->surface_height = height;
-}
-
 
 void
 ws_image_view_set_contents (WsImageView  *view,
@@ -66,9 +54,22 @@ ws_image_view_size_allocate (GtkWidget *widget,
 }
 
 static void
-ws_image_view_class_init (WsImageViewClass *class)
+ws_image_view_finalize (GObject *object)
 {
-  GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (class);
+  WsImageView *self = WS_IMAGE_VIEW (object);
+
+  g_clear_pointer (&self->picture, gtk_widget_unparent);
+
+  G_OBJECT_CLASS (ws_image_view_parent_class)->finalize (object);
+}
+
+static void
+ws_image_view_class_init (WsImageViewClass *klass)
+{
+  GObjectClass *object_class = G_OBJECT_CLASS (klass);
+  GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
+
+  object_class->finalize = ws_image_view_finalize;
 
   widget_class->measure = ws_image_view_measure;
   widget_class->size_allocate = ws_image_view_size_allocate;
