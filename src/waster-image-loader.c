@@ -43,7 +43,7 @@ imgur_image_init_from_json (ImgurImage *img,
 
 
   img->index = -1;
-  img->texture = NULL;
+  img->paintable = NULL;
 }
 
 G_DEFINE_TYPE (WsImageLoader, ws_image_loader, G_TYPE_OBJECT);
@@ -205,6 +205,19 @@ ws_image_loader_load_image_async (WsImageLoader       *loader,
 
   task = g_task_new (loader, cancellable, callback, user_data);
 
+  /* 'Animated' images, aka videos, are a special case and will be streamed
+   * when showing them */
+  if (image->is_animated)
+    {
+      image->paintable = GDK_PAINTABLE (gtk_media_file_new_for_resource ("/home/baedert/Peek 2017-09-26 07-23.webm"));
+      gtk_media_stream_set_loop (GTK_MEDIA_STREAM (image->paintable), TRUE);
+      gtk_media_stream_play (GTK_MEDIA_STREAM (image->paintable));
+
+      g_task_return_pointer (task, image, NULL);
+      g_object_unref (task);
+      return;
+    }
+
   if (image->is_album)
     {
       LoaderData *data;
@@ -228,13 +241,13 @@ ws_image_loader_load_image_async (WsImageLoader       *loader,
     }
   else
     {
-      g_warning ("Non album image!");
       GInputStream *in_stream;
       GdkPixbufAnimation *animation;
       GdkPixbuf *pixbuf;
       SoupMessage *message = soup_message_new ("GET", image->link);
       SoupSession *session;
       GError *error = NULL;
+      GBytes *response;
 
       session = soup_session_new ();
 
@@ -242,7 +255,6 @@ ws_image_loader_load_image_async (WsImageLoader       *loader,
 
       soup_session_send_message (session, message);
 
-      GBytes *response;
       g_object_get (message, "response-body-data", &response, NULL);
 
       in_stream = g_memory_input_stream_new_from_bytes (response);
@@ -268,7 +280,7 @@ ws_image_loader_load_image_async (WsImageLoader       *loader,
         }
 
       pixbuf = gdk_pixbuf_animation_get_static_image (animation);
-      image->texture = gdk_texture_new_for_pixbuf (pixbuf);
+      image->paintable = GDK_PAINTABLE (gdk_texture_new_for_pixbuf (pixbuf));
 
       if (cancellable != NULL && g_cancellable_is_cancelled (cancellable))
         {

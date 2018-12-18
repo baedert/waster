@@ -115,10 +115,7 @@ ws_album_view_clear (WsAlbumView *view)
   int i;
 
   for (i = 0; i < view->n_images; i ++)
-    {
-      gtk_widget_unparent (view->images[i]);
-      /*g_object_unref (view->images[i]);*/
-    }
+    gtk_widget_unparent (view->images[i]);
 
   g_free (view->images);
   view->images = NULL;
@@ -136,6 +133,7 @@ ws_album_view_reserve_space (WsAlbumView *view,
   ws_album_view_clear (view);
   view->cur_image = image;
 
+
   if (image->is_album)
     {
       view->n_images = image->n_subimages;
@@ -146,13 +144,8 @@ ws_album_view_reserve_space (WsAlbumView *view,
           ImgurImage *img = image->subimages[i];
           g_assert (img != NULL);
 
-          if (image->subimages[i]->is_animated)
-            content_view = ws_video_view_new ();
-          else
-            content_view = ws_image_view_new (image->subimages[i]->width,
-                                              image->subimages[i]->height);
-          gtk_widget_show (content_view);
-
+          content_view = ws_image_view_new (image->subimages[i]->width,
+                                            image->subimages[i]->height);
           ws_album_view_set (view, i, content_view);
         }
     }
@@ -161,12 +154,9 @@ ws_album_view_reserve_space (WsAlbumView *view,
       GtkWidget *content_view;
       view->n_images = 1;
       view->images = g_malloc (1 * sizeof (GtkImage *));
-      if (image->is_animated)
-        content_view = ws_video_view_new ();
-      else
-        content_view = ws_image_view_new (image->width, image->height);
 
-      gtk_widget_show (content_view);
+      g_message ("%s: %d×%d", __FILE__, image->width, image->height);
+      content_view = ws_image_view_new (image->width, image->height);
 
       ws_album_view_set (view, 0, content_view);
     }
@@ -186,20 +176,9 @@ ws_album_view_show_image (WsAlbumView *view,
   else
     index = image->index;
 
-
-  if (image->is_animated)
-    {
-      g_assert (WS_IS_VIDEO_VIEW (view->images[index]));
-      ws_video_view_set_image (WS_VIDEO_VIEW (view->images[index]),
-                               image);
-    }
-  else
-    {
-      g_assert (image->texture);
-      g_assert (WS_IS_IMAGE_VIEW (view->images[index]));
-      ws_image_view_set_contents (WS_IMAGE_VIEW (view->images[index]),
-                                  image->texture);
-    }
+  g_assert (image->paintable);
+  ws_image_view_set_contents (WS_IMAGE_VIEW (view->images[index]),
+                              image->paintable);
 }
 
 void

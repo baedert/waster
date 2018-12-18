@@ -18,7 +18,7 @@ struct _ImgurImage
   int height;
   guint is_animated : 1;
   guint is_album : 1;
-  GdkTexture *texture;
+  GdkPaintable *paintable;
 
   int n_subimages;
   struct _ImgurImage **subimages;
