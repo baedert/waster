@@ -278,36 +278,26 @@ ws_album_view_get_property (GObject    *object,
     }
 }
 
-static gboolean
-ws_album_view_draw (GtkWidget *widget, cairo_t *ct)
-{
-  WsAlbumView *view = WS_ALBUM_VIEW (widget);
-  int i;
-
-  GTK_WIDGET_CLASS (ws_album_view_parent_class)->draw (widget, ct);
-
-  for (i = 0; i < view->n_images; i ++)
-    {
-      gtk_container_propagate_draw (GTK_CONTAINER (widget), view->images[i], ct);
-    }
-
-  return GDK_EVENT_PROPAGATE;
-}
-
-
 static void
-ws_album_view_measure (WsAlbumView    *view,
+ws_album_view_measure (GtkWidget      *widget,
+                       GtkOrientation  orientation,
+                       int             for_size,
                        int            *minimum,
                        int            *natural,
-                       GtkOrientation  orientation)
+                       int            *minimum_baseline,
+                       int            *natural_baseline)
 {
+  WsAlbumView *view = WS_ALBUM_VIEW (widget);
+
   if (orientation == GTK_ORIENTATION_HORIZONTAL)
     {
       int i, min, nat;
 
       for (i = 0; i < view->n_images; i ++)
         {
-          gtk_widget_get_preferred_width (view->images[i], &min, &nat);
+          gtk_widget_measure (view->images[i], GTK_ORIENTATION_HORIZONTAL, -1,
+                              &min, &nat, NULL, NULL);
+
           *minimum = MAX (min, *minimum);
           *natural = MAX (nat, *natural);
         }
@@ -320,34 +310,25 @@ ws_album_view_measure (WsAlbumView    *view,
 
       for (i = 0; i < view->n_images; i ++)
         {
-          gtk_widget_get_preferred_height (view->images[i], &min, &nat);
+          gtk_widget_measure (view->images[i], GTK_ORIENTATION_VERTICAL, -1,
+                              &min, &nat, NULL, NULL);
+
           *minimum += min;
           *natural += nat;
         }
     }
+
 }
 
 static void
-preferred_width (GtkWidget *widget, int *min, int *nat)
-{
-  ws_album_view_measure (WS_ALBUM_VIEW (widget), min, nat, GTK_ORIENTATION_HORIZONTAL);
-}
-
-static void
-preferred_height (GtkWidget *widget, int *min, int *nat)
-{
-  ws_album_view_measure (WS_ALBUM_VIEW (widget), min, nat, GTK_ORIENTATION_VERTICAL);
-}
-
-static void
-ws_album_view_size_allocate (GtkWidget     *widget,
-                             GtkAllocation *allocation)
+ws_album_view_size_allocate (GtkWidget *widget,
+                             int        width,
+                             int        height,
+                             int        baseline)
 {
   WsAlbumView *view = WS_ALBUM_VIEW (widget);
   GtkAllocation child_allocation;
   int i, y;
-
-  GTK_WIDGET_CLASS (ws_album_view_parent_class)->size_allocate (widget, allocation);
 
   if (!view->cur_image) return;
 
@@ -359,10 +340,10 @@ ws_album_view_size_allocate (GtkWidget     *widget,
     {
       child_allocation.x = 0;
       child_allocation.y = y;
-      child_allocation.width = allocation->width;
-      child_allocation.height = allocation->height;
+      child_allocation.width = width;
+      child_allocation.height = height;
 
-      gtk_widget_size_allocate (view->images[i], &child_allocation);
+      gtk_widget_size_allocate (view->images[i], &child_allocation, -1);
 
       y += child_allocation.height;
     }
@@ -394,7 +375,7 @@ ws_album_view_finalize (GObject *object)
 static void
 ws_album_view_init (WsAlbumView *view)
 {
-  gtk_widget_set_has_window (GTK_WIDGET (view), FALSE);
+  gtk_widget_set_has_surface (GTK_WIDGET (view), FALSE);
   view->images = NULL;
   view->n_images = 0;
 }
@@ -410,10 +391,8 @@ ws_album_view_class_init (WsAlbumViewClass *class)
   object_class->get_property = ws_album_view_get_property;
   object_class->finalize     = ws_album_view_finalize;
 
-  widget_class->draw = ws_album_view_draw;
   widget_class->size_allocate = ws_album_view_size_allocate;
-  widget_class->get_preferred_width = preferred_width;
-  widget_class->get_preferred_height = preferred_height;
+  widget_class->measure = ws_album_view_measure;
 
   container_class->add = __empty;
   container_class->remove = __empty;

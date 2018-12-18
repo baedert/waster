@@ -37,45 +37,28 @@ ws_image_view_set_surface (WsImageView     *view,
 {
   view->surface = surface;
 
+  g_message (__FUNCTION__);
+
   /*gtk_image_view_set_surface (GTK_IMAGE_VIEW (view), surface);*/
 }
 
-static double
-get_scale (WsImageView *view)
-{
-  int widget_width = gtk_widget_get_allocated_width (GTK_WIDGET (view));
-  int widget_height = gtk_widget_get_allocated_height (GTK_WIDGET (view));
-  int image_width = view->surface_width;
-  int image_height = view->surface_height;
-
-  double hscale = (double)widget_width / (double)image_width;
-  double vscale = (double)widget_height / (double)image_height;
-
-  return MIN (hscale, MIN (vscale, 1));
-}
-
 static void
-ws_image_view_get_preferred_height (GtkWidget *widget,
-                                    int *min,
-                                    int *nat)
+ws_image_view_measure (GtkWidget      *widget,
+                       GtkOrientation  orientation,
+                       int             for_size,
+                       int            *minimum,
+                       int            *natural,
+                       int            *minimum_baseline,
+                       int            *natural_baseline)
 {
   WsImageView *view = WS_IMAGE_VIEW (widget);
-  double scale = get_scale (WS_IMAGE_VIEW (widget));
 
-  *nat = view->surface_height * scale;
-  *min = 0;
-}
+  *minimum = 0;
 
-static void
-ws_image_view_get_preferred_width (GtkWidget *widget,
-                                    int *min,
-                                    int *nat)
-{
-  WsImageView *view = WS_IMAGE_VIEW (widget);
-  double scale = get_scale (WS_IMAGE_VIEW (widget));
-
-  *nat  = view->surface_width * scale;
-  *min = 0;
+  if (orientation == GTK_ORIENTATION_HORIZONTAL)
+    *natural = view->surface_width;
+  else
+    *natural = view->surface_height;
 }
 
 static void
@@ -83,14 +66,13 @@ ws_image_view_class_init (WsImageViewClass *class)
 {
   GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (class);
 
-  widget_class->get_preferred_height = ws_image_view_get_preferred_height;
-  widget_class->get_preferred_width  = ws_image_view_get_preferred_width;
+  widget_class->measure = ws_image_view_measure;
 }
 
 static void
 ws_image_view_init (WsImageView *view)
 {
-  gtk_widget_set_has_window (GTK_WIDGET (view), FALSE);
+  gtk_widget_set_has_surface (GTK_WIDGET (view), FALSE);
 }
 
 

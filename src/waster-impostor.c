@@ -11,8 +11,12 @@ ws_impostor_clone (WsImpostor *impostor, GtkWidget *widget)
 {
   cairo_t *context;
 
-  if (!widget) return;
+  /*if (!widget)*/
 
+  g_warning ("TODO: Fix %s", __FUNCTION__);
+  return;
+
+#if 0
   if (impostor->surface)
     cairo_surface_destroy (impostor->surface);
 
@@ -32,78 +36,79 @@ ws_impostor_clone (WsImpostor *impostor, GtkWidget *widget)
   gtk_widget_draw (widget, context);
 
   cairo_destroy (context);
+#endif
 }
 
 
-static void
-get_preferred_width (GtkWidget *widget,
-                     int       *min,
-                     int       *nat)
-{
-  WsImpostor *imp = WS_IMPOSTOR (widget);
+/*static void*/
+/*get_preferred_width (GtkWidget *widget,*/
+                     /*int       *min,*/
+                     /*int       *nat)*/
+/*{*/
+  /*WsImpostor *imp = WS_IMPOSTOR (widget);*/
 
-  if (!imp->surface)
-    {
-      *min = 1;
-      *nat = 1;
-    }
-  else
-    {
-      *min = imp->w;
-      *nat = imp->w;
-    }
-}
-
-
-static void
-get_preferred_height (GtkWidget *widget,
-                      int       *min,
-                      int       *nat)
-{
-  WsImpostor *imp = WS_IMPOSTOR (widget);
-
-  if (!imp->surface)
-    {
-      *min = 1;
-      *nat = 1;
-    }
-  else
-    {
-      *min = imp->h;
-      *nat = imp->h;
-    }
-}
+  /*if (!imp->surface)*/
+    /*{*/
+      /**min = 1;*/
+      /**nat = 1;*/
+    /*}*/
+  /*else*/
+    /*{*/
+      /**min = imp->w;*/
+      /**nat = imp->w;*/
+    /*}*/
+/*}*/
 
 
-static gboolean
-draw (GtkWidget *widget,
-      cairo_t   *ct)
-{
-  WsImpostor *imp = WS_IMPOSTOR (widget);
+/*static void*/
+/*get_preferred_height (GtkWidget *widget,*/
+                      /*int       *min,*/
+                      /*int       *nat)*/
+/*{*/
+  /*WsImpostor *imp = WS_IMPOSTOR (widget);*/
 
-  if (imp->surface)
-    {
-      cairo_rectangle (ct, 0, 0, gtk_widget_get_allocated_width (widget),
-                       gtk_widget_get_allocated_height (widget));
-      cairo_set_source_surface (ct, imp->surface, 0, 0);
-      cairo_fill (ct);
-    }
+  /*if (!imp->surface)*/
+    /*{*/
+      /**min = 1;*/
+      /**nat = 1;*/
+    /*}*/
+  /*else*/
+    /*{*/
+      /**min = imp->h;*/
+      /**nat = imp->h;*/
+    /*}*/
+/*}*/
 
-  return GDK_EVENT_PROPAGATE;
-}
+
+/*static gboolean*/
+/*draw (GtkWidget *widget,*/
+      /*cairo_t   *ct)*/
+/*{*/
+  /*WsImpostor *imp = WS_IMPOSTOR (widget);*/
+
+  /*if (imp->surface)*/
+    /*{*/
+      /*cairo_rectangle (ct, 0, 0, gtk_widget_get_allocated_width (widget),*/
+                       /*gtk_widget_get_allocated_height (widget));*/
+      /*cairo_set_source_surface (ct, imp->surface, 0, 0);*/
+      /*cairo_fill (ct);*/
+    /*}*/
+
+  /*return GDK_EVENT_PROPAGATE;*/
+/*}*/
 
 static void
 ws_impostor_class_init (WsImpostorClass *class)
 {
   GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (class);
 
-  widget_class->get_preferred_width  = get_preferred_width;
-  widget_class->get_preferred_height = get_preferred_height;
-  widget_class->draw                 = draw;
+  /*widget_class->get_preferred_width  = get_preferred_width;*/
+  /*widget_class->get_preferred_height = get_preferred_height;*/
+  /*widget_class->draw                 = draw;*/
 }
 
 static void
 ws_impostor_init (WsImpostor *impostor)
 {
-  gtk_widget_set_has_window (GTK_WIDGET (impostor), FALSE);
+  gtk_widget_set_has_surface (GTK_WIDGET (impostor), FALSE);
 }

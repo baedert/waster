@@ -1,5 +1,5 @@
 project('waster', 'c')
-gtkdep = dependency('gtk+-3.0')
+gtkdep = dependency('gtk+-4.0')
 soupdep = dependency('libsoup-2.4')
 jsondep = dependency('json-glib-1.0')
 gstdep  = dependency('gstreamer-video-1.0')

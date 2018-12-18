@@ -173,7 +173,7 @@ activate (GApplication *app)
 {
   WsMainWindow *win = ws_main_window_new (GTK_APPLICATION (app));
 
-  gtk_widget_show_all (GTK_WIDGET (win));
+  gtk_widget_show (GTK_WIDGET (win));
 }
 
 static void
