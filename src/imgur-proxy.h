@@ -4,7 +4,6 @@
 #include <rest/rest-proxy.h>
 #include <rest/oauth2-proxy.h>
 
-
 struct _ImgurProxy
 {
   OAuth2Proxy parent_instance;

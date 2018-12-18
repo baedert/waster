@@ -1,10 +1,9 @@
 #include <math.h>
-#include <gtkimageview.h>
 
 #include "waster-media.h"
 
 
-G_DEFINE_TYPE (WsImageView, ws_image_view, GTK_TYPE_IMAGE_VIEW);
+G_DEFINE_TYPE (WsImageView, ws_image_view, GTK_TYPE_WIDGET);
 
 
 GtkWidget *
@@ -38,7 +37,7 @@ ws_image_view_set_surface (WsImageView     *view,
 {
   view->surface = surface;
 
-  gtk_image_view_set_surface (GTK_IMAGE_VIEW (view), surface);
+  /*gtk_image_view_set_surface (GTK_IMAGE_VIEW (view), surface);*/
 }
 
 static double

@@ -50,24 +50,28 @@ G_DEFINE_TYPE (WsImageLoader, ws_image_loader, G_TYPE_OBJECT);
 
 typedef struct _WsImageLoader WsImageLoader;
 
-static void
-ws_image_loader_load_gallery_threaded (GTask         *task,
-                                       gpointer       source_object,
-                                       gpointer       task_data,
-                                       GCancellable *cancellable)
+typedef struct 
 {
+  WsImageLoader *loader;
+  ImgurImage *image;
+  gpointer user_data;
+} LoaderData;
+
+static void
+gallery_call_finished_cb (GObject      *source_object,
+                          GAsyncResult *result,
+                          gpointer      user_data)
+{
+  RestProxyCall *call = REST_PROXY_CALL (source_object);
+  LoaderData *data = user_data;
+  WsImageLoader *loader = data->loader;
   GError *error = NULL;
-  WsImageLoader *loader = source_object;
-  Waster *app = (Waster *)g_application_get_default ();
   JsonParser *parser;
   JsonObject *root;
   int i, n_images;
 
-  RestProxyCall *call = rest_proxy_new_call (app->proxy);
-  rest_proxy_call_set_function (call, "gallery/hot/viral/0.json");
-  rest_proxy_call_set_method (call, "GET");
-
-  rest_proxy_call_sync (call, NULL);
+  rest_proxy_call_invoke_finish (call, result, &error);
+  g_assert_no_error (error);
 
   parser = json_parser_new ();
   json_parser_load_from_data (parser, rest_proxy_call_get_payload (call), -1, &error);
@@ -116,10 +120,21 @@ ws_image_loader_load_gallery_async (WsImageLoader       *loader,
                                     GAsyncReadyCallback  callback,
                                     gpointer             user_data)
 {
-  GTask *task = g_task_new (loader, cancellable, callback, user_data);
+  Waster *app = (Waster *)g_application_get_default ();
+  LoaderData *data;
+  RestProxyCall *call = rest_proxy_new_call (app->proxy);
 
-  g_task_run_in_thread (task, ws_image_loader_load_gallery_threaded);
-  g_object_unref (task);
+  rest_proxy_call_set_function (call, "gallery/hot/viral/0.json");
+  rest_proxy_call_set_method (call, "GET");
+
+  data = g_new (LoaderData, 1);
+  data->loader = loader;
+  data->user_data = user_data;
+
+  rest_proxy_call_invoke_async (call,
+                                cancellable,
+                                gallery_call_finished_cb,
+                                data);
 }
 
 void
@@ -132,7 +147,7 @@ ws_image_loader_load_gallery_finish (WsImageLoader  *loader,
 
 
 
-void
+static void
 ws_image_loader_load_image_threaded (GTask         *task,
                                      gpointer       source_object,
                                      gpointer       task_data,
@@ -156,7 +171,7 @@ ws_image_loader_load_image_threaded (GTask         *task,
 
       g_free (function);
 
-      rest_proxy_call_sync (call, NULL);
+      /*rest_proxy_call_sync (call, NULL);*/
 
       if (cancellable != NULL && g_cancellable_is_cancelled (cancellable))
         {
@@ -195,7 +210,7 @@ ws_image_loader_load_image_threaded (GTask         *task,
       return;
     }
 
-  /* If the image s not anuimated (i.e. not a mp4 video), we load it here. */
+  /* If the image s not animated (i.e. not a mp4 video), we load it here. */
   if (!image->is_animated)
     {
       GInputStream *in_stream;
@@ -267,6 +282,45 @@ ws_image_loader_load_image_threaded (GTask         *task,
   g_task_return_pointer (task, image, NULL);
 }
 
+static void
+image_call_finished_cb (GObject      *source_object,
+                        GAsyncResult *result,
+                        gpointer      user_data)
+{
+  RestProxyCall *call = REST_PROXY_CALL (source_object);
+  GError *error = NULL;
+  Waster *waster = (Waster *) g_application_get_default ();
+  LoaderData *data = user_data;
+  WsImageLoader *loader = data->loader;
+  ImgurImage *image = data->image;
+  JsonParser *parser = json_parser_new ();
+  JsonObject *root;
+  JsonArray *data_array;
+  int i;
+
+  rest_proxy_call_invoke_finish (call, result, &error);
+  g_assert_no_error (error);
+
+  json_parser_load_from_data (parser, rest_proxy_call_get_payload (call), -1, NULL);
+  root = json_node_get_object (json_parser_get_root (parser));
+  data_array = json_object_get_array_member (root, "data");
+
+  image->n_subimages = (int)json_array_get_length (data_array);
+  image->subimages = g_malloc (image->n_subimages * sizeof (ImgurImage *));
+  for (i = 0; i < image->n_subimages; i ++)
+    {
+      JsonObject *img_json = json_array_get_object_element (data_array, i);
+      image->subimages[i] = g_malloc (sizeof (ImgurImage));
+      imgur_image_init_from_json (image->subimages[i], img_json);
+      image->subimages[i]->index = i;
+      image->subimages[i]->is_album = FALSE;
+    }
+
+  g_object_unref (parser);
+
+  /*g_task_return_pointer (task, image, NULL);*/
+}
+
 void
 ws_image_loader_load_image_async (WsImageLoader       *loader,
                                   ImgurImage          *image,
@@ -274,22 +328,29 @@ ws_image_loader_load_image_async (WsImageLoader       *loader,
                                   GAsyncReadyCallback  callback,
                                   gpointer             user_data)
 {
-  GTask *task;
+  Waster *app = (Waster *)g_application_get_default ();
+  LoaderData *data;
+  RestProxyCall *call = rest_proxy_new_call (app->proxy);
+  char *function;
 
-  g_return_if_fail (WS_IS_IMAGE_LOADER (loader));
+  /* XXX This assert ensures that we only take the code path that was previously covered
+   * by a RestProxyCall. Fix the other one later. */
+  g_assert (image->is_album);
 
-  task = g_task_new (loader, cancellable, callback, user_data);
-  if (image->surface != NULL)
-    {
-      g_task_return_pointer (task, image, NULL);
-      g_object_unref (task);
-      return;
-    }
+  function = g_strdup_printf ("album/%s/images", image->id);
 
-  g_task_set_task_data (task, image, NULL);
-  g_task_run_in_thread (task, ws_image_loader_load_image_threaded);
+  rest_proxy_call_take_function (call, g_strdup_printf ("album/%s/images", image->id));
+  rest_proxy_call_set_method (call, "GET");
 
-  g_object_unref (task);
+  data = g_new (LoaderData, 1);
+  data->loader = loader;
+  data->user_data = user_data;
+  data->image = image;
+
+  rest_proxy_call_invoke_async (call,
+                                cancellable,
+                                image_call_finished_cb,
+                                data);
 }
 
 ImgurImage *

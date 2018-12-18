@@ -1,6 +1,5 @@
 project('waster', 'c')
 gtkdep = dependency('gtk+-3.0')
-restdep = dependency('rest-0.7')
 soupdep = dependency('libsoup-2.4')
 jsondep = dependency('json-glib-1.0')
 gstdep  = dependency('gstreamer-video-1.0')
@@ -21,31 +20,49 @@ install_data(
 )
 
 sources = [
-  'waster.c',
-  'waster-main-window.c',
-  'waster-image-loader.c',
-  'waster-initial-state.c',
-  'waster-album-view.c',
-  'waster-media.c',
-  'waster-impostor.c',
-  'imgur-proxy.c',
-  'imgur-proxy-call.c',
-  'main.c',
-  resources
+  'src/waster.c',
+  'src/waster-main-window.c',
+  'src/waster-image-loader.c',
+  'src/waster-initial-state.c',
+  'src/waster-album-view.c',
+  'src/waster-media.c',
+  'src/waster-impostor.c',
+  'src/imgur-proxy.c',
+  'src/imgur-proxy-call.c',
+  'src/main.c',
+  resources,
+
+  # Librest
+  'src/rest/rest-param.c',
+  'src/rest/rest-params.c',
+  'src/rest/rest-proxy.c',
+  'src/rest/rest-proxy-call.c',
+  'src/rest/rest-main.c',
+  'src/rest/oauth-proxy.c',
+  'src/rest/oauth-proxy-call.c',
+  'src/rest/oauth2-proxy.c',
+  'src/rest/oauth2-proxy-call.c',
+  'src/rest/sha1.c',
+
+
 ]
 
-gtkimageview = subproject('gtkimageview')
-gtkimageview_lib = gtkimageview.get_variable('lib')
-gtkimageview_dir = gtkimageview.get_variable('dir')
+cdata = configuration_data()
+configure_file(
+  input : 'src/config.h.meson',
+  output: 'config.h',
+  configuration: cdata
+)
 
 executable(
   'waster',
   sources: sources,
   dependencies: [gtkdep,
-                 restdep,
                  soupdep,
                  jsondep,
                  gstdep],
-  link_with: gtkimageview_lib,
-  include_directories: gtkimageview_dir
+  include_directories: [
+    include_directories('src/'),
+    include_directories('src/rest/')
+  ]
 )
