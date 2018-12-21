@@ -5,7 +5,7 @@
 
 
 
-G_DEFINE_TYPE_WITH_CODE (WsAlbumView, ws_album_view, GTK_TYPE_CONTAINER,
+G_DEFINE_TYPE_WITH_CODE (WsAlbumView, ws_album_view, GTK_TYPE_WIDGET,
                          G_IMPLEMENT_INTERFACE (GTK_TYPE_SCROLLABLE, NULL));
 
 enum {
@@ -26,11 +26,6 @@ current_visible_image (WsAlbumView *view)
   current_visible = current_value / widget_height;
 
   return current_visible;
-}
-
-static void __empty (GtkContainer *container, GtkWidget *child)
-{
-  g_critical ("NOPE.");
 }
 
 static void
@@ -350,7 +345,6 @@ ws_album_view_class_init (WsAlbumViewClass *class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (class);
   GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (class);
-  GtkContainerClass *container_class = GTK_CONTAINER_CLASS (class);
 
   object_class->set_property = ws_album_view_set_property;
   object_class->get_property = ws_album_view_get_property;
@@ -358,9 +352,6 @@ ws_album_view_class_init (WsAlbumViewClass *class)
 
   widget_class->size_allocate = ws_album_view_size_allocate;
   widget_class->measure = ws_album_view_measure;
-
-  container_class->add = __empty;
-  container_class->remove = __empty;
 
   g_object_class_override_property (object_class, PROP_HADJUSTMENT, "hadjustment");
   g_object_class_override_property (object_class, PROP_VADJUSTMENT, "vadjustment");

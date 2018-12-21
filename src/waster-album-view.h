@@ -23,7 +23,7 @@ typedef struct _WsAlbumView WsAlbumView;
 
 #define WS_TYPE_ALBUM_VIEW ws_album_view_get_type()
 
-G_DECLARE_FINAL_TYPE (WsAlbumView, ws_album_view, WS, ALBUM_VIEW, GtkBox);
+G_DECLARE_FINAL_TYPE (WsAlbumView, ws_album_view, WS, ALBUM_VIEW, GtkWidget);
 
 void ws_album_view_reserve_space (WsAlbumView *view,
                                   ImgurImage  *image);
