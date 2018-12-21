@@ -28,6 +28,7 @@ struct _WsMainWindow
   GCancellable* cancellables[LOOKAHEAD + 1];
 
   guint current_album_index;
+  int current_image_index;
 };
 
 typedef struct _WsMainWindow WsMainWindow;
@@ -65,6 +66,7 @@ show_next_album (WsMainWindow *window)
   window->cancellables[0] = g_cancellable_new ();
 
   window->current_album_index ++;
+  window->current_image_index = 0;
 
   /* TODO: Remove this and load the next page instead */
   if (window->current_album_index >= window->gallery->n_albums)
@@ -77,7 +79,7 @@ show_next_album (WsMainWindow *window)
   ws_album_view_reserve_space (WS_ALBUM_VIEW (window->album_view),
                                album);
   ws_image_loader_load_image_async (loader,
-                                    &album->images[0], // XXX Proper index!
+                                    &album->images[window->current_image_index],
                                     window->cancellables[0],
                                     image_loaded_cb,
                                     window);
@@ -89,12 +91,13 @@ show_next_album (WsMainWindow *window)
 }
 
 static void
-show_prev_image (WsMainWindow *window)
+show_prev_album (WsMainWindow *window)
 {
   ImgurAlbum *album;
   WsImageLoader *loader = window->loader;
 
   window->current_album_index --;
+  window->current_image_index = 0;
 
   album = &window->gallery->albums[window->current_album_index];
   ws_image_loader_load_image_async (loader,
@@ -122,7 +125,7 @@ prev_button_clicked_cb (GtkButton *button,
 {
   WsMainWindow *window = user_data;
 
-  show_prev_image (window);
+  show_prev_album (window);
 }
 
 WsMainWindow *
@@ -184,6 +187,7 @@ gallery_loaded_cb (GObject      *source_object,
 
   /* -1 so show_next_album will incrase it to 0 and load that */
   window->current_album_index = -1;
+  window->current_image_index = -1;
   gtk_stack_set_visible_child_name (GTK_STACK (window->main_stack), "image");
   gtk_stack_set_visible_child_name (GTK_STACK (window->image_stack), "album");
 
@@ -218,9 +222,27 @@ go_down_cb (GSimpleAction *action,
             GVariant      *v,
             gpointer       user_data)
 {
-  WsMainWindow *window = user_data;
+  WsMainWindow *self = user_data;
+  ImgurAlbum *album;
 
-  ws_album_view_scroll_to_next (WS_ALBUM_VIEW (window->album_view));
+  album = &self->gallery->albums[self->current_album_index];
+
+  if (self->current_image_index < album->n_images - 1)
+    {
+      ImgurImage *image;
+
+      self->current_image_index ++;
+      image = &album->images[self->current_image_index];
+
+      if (image->paintable == NULL)
+        ws_image_loader_load_image_async (self->loader,
+                                          &album->images[self->current_image_index],
+                                          self->cancellables[0],
+                                          image_loaded_cb,
+                                          self);
+
+      ws_album_view_scroll_to_next (WS_ALBUM_VIEW (self->album_view));
+    }
 }
 
 static void
@@ -228,13 +250,18 @@ go_up_cb (GSimpleAction *action,
           GVariant      *v,
           gpointer       user_data)
 {
-  WsMainWindow *window = user_data;
+  WsMainWindow *self = user_data;
+  ImgurAlbum *album;
 
-  ws_album_view_scroll_to_prev (WS_ALBUM_VIEW (window->album_view));
+  album = &self->gallery->albums[self->current_album_index];
+
+  if (self->current_image_index > 0)
+    {
+      self->current_image_index --;
+
+      ws_album_view_scroll_to_prev (WS_ALBUM_VIEW (self->album_view));
+    }
 }
-
-
-
 
 
 static GActionEntry win_entries[] = {

@@ -20,7 +20,7 @@ static int
 current_visible_image (WsAlbumView *view)
 {
   int current_visible;
-  int widget_height = gtk_widget_get_allocated_height (GTK_WIDGET (view));
+  int widget_height = gtk_widget_get_height (GTK_WIDGET (view));
   double current_value = gtk_adjustment_get_value (view->vadjustment);
 
   current_visible = current_value / widget_height;
@@ -46,7 +46,7 @@ ws_album_view_update_adjustments (WsAlbumView *self)
   height = gtk_widget_get_height (GTK_WIDGET (self)) * self->n_widgets;
 
   gtk_adjustment_set_upper (self->vadjustment, height);
-  gtk_adjustment_set_page_size (self->vadjustment, gtk_widget_get_allocated_height (GTK_WIDGET (self)));
+  gtk_adjustment_set_page_size (self->vadjustment, gtk_widget_get_height (GTK_WIDGET (self)));
   value = gtk_adjustment_get_value (self->vadjustment);
   max_value = gtk_adjustment_get_upper (self->vadjustment) -
               gtk_adjustment_get_page_size (self->vadjustment);
@@ -115,7 +115,7 @@ void
 ws_album_view_scroll_to_next (WsAlbumView *view)
 {
   int height = 0;
-  int widget_height = gtk_widget_get_allocated_height (GTK_WIDGET (view));
+  int widget_height = gtk_widget_get_height (GTK_WIDGET (view));
   int current_visible = current_visible_image (view);
 
   height = (current_visible * widget_height) + widget_height;
@@ -126,7 +126,7 @@ ws_album_view_scroll_to_next (WsAlbumView *view)
 void
 ws_album_view_scroll_to_prev (WsAlbumView *view)
 {
-  int widget_height = gtk_widget_get_allocated_height (GTK_WIDGET (view));
+  int widget_height = gtk_widget_get_height (GTK_WIDGET (view));
   int height = 0;
   int current_visible = current_visible_image (view);//, &height);
 

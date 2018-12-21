@@ -27,6 +27,7 @@ sources = [
   'src/waster-album-view.c',
   'src/waster-media.c',
   'src/waster-impostor.c',
+  'src/waster-remote-media-file.c',
   'src/imgur-proxy.c',
   'src/imgur-proxy-call.c',
   'src/imgur-gallery.c',
