@@ -177,13 +177,6 @@ activate (GApplication *app)
 }
 
 static void
-go_next_cb (GSimpleAction *action, GVariant *v, gpointer user_data)
-{
-  g_message ("next");
-}
-
-
-static void
 startup (GApplication *app)
 {
   GtkSettings *settings;

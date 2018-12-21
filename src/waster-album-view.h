@@ -12,9 +12,12 @@ struct _WsAlbumView
   GtkAdjustment *hadjustment;
   GtkAdjustment *vadjustment;
 
+  ImgurAlbum *album;
+
   ImgurImage *cur_image;
-  GtkWidget **images;
-  int n_images;
+
+  int n_widgets;
+  GtkWidget **widgets;
 
   int cur_visible_image;
 };
@@ -25,16 +28,13 @@ typedef struct _WsAlbumView WsAlbumView;
 
 G_DECLARE_FINAL_TYPE (WsAlbumView, ws_album_view, WS, ALBUM_VIEW, GtkWidget);
 
-void ws_album_view_reserve_space (WsAlbumView *view,
-                                  ImgurImage  *image);
-
-void ws_album_view_show_image (WsAlbumView *view,
-                               ImgurImage  *image);
-
-void ws_album_view_clear (WsAlbumView *view);
-
-void ws_album_view_scroll_to_next (WsAlbumView *view);
-void ws_album_view_scroll_to_prev (WsAlbumView *view);
+void     ws_album_view_reserve_space     (WsAlbumView  *self,
+                                          ImgurAlbum   *album);
+void     ws_album_view_show_image        (WsAlbumView  *self,
+                                          ImgurImage   *image);
+void     ws_album_view_clear             (WsAlbumView  *self);
+void     ws_album_view_scroll_to_next    (WsAlbumView  *self);
+void     ws_album_view_scroll_to_prev    (WsAlbumView  *self);
 
 
 #endif

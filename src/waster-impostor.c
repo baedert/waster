@@ -13,7 +13,7 @@ ws_impostor_clone (WsImpostor *impostor, GtkWidget *widget)
 
   /*if (!widget)*/
 
-  g_warning ("TODO: Fix %s", __FUNCTION__);
+  /*g_warning ("TODO: Fix %s", __FUNCTION__);*/
   return;
 
 #if 0

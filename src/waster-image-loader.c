@@ -5,20 +5,11 @@
 #include <json-glib/json-glib.h>
 #include <libsoup/soup.h>
 
-#if 0
-static void
-print_imgur_image (ImgurImage *img)
-{
-  g_message ("Image -- ID: %s , link: %s , album: %d , title: '%s'",
-             img->id, img->link, img->is_album, img->title);
-}
-#endif
-
 static void
 imgur_image_init_from_json (ImgurImage *img,
                             JsonObject *json_obj)
 {
-  img->id     = g_strdup (json_object_get_string_member (json_obj, "id"));
+  img->id = g_strdup (json_object_get_string_member (json_obj, "id"));
 
   if (json_object_has_member (json_obj, "width"))
     {
@@ -41,10 +32,48 @@ imgur_image_init_from_json (ImgurImage *img,
   else
     img->link = g_strdup (json_object_get_string_member (json_obj, "link"));
 
-
-  img->index = -1;
   img->paintable = NULL;
 }
+
+static void
+imgur_album_init_from_json (ImgurAlbum *self,
+                            JsonObject *album_obj)
+{
+
+  self->title = g_strdup (json_object_get_string_member (album_obj, "title"));
+
+  g_snprintf (self->id, sizeof (self->id), "%s",
+              json_object_get_string_member (album_obj, "id"));
+
+  /* Some of these json objects have an "images" array, even if the array only contains
+   * one element. Some of them don't have it in that case though. Let's map both of those
+   * cases to the former one. */
+  if (json_object_has_member (album_obj, "images"))
+    {
+      JsonArray *images_array;
+      int i;
+
+      images_array = json_object_get_array_member (album_obj, "images");
+      self->n_images = json_array_get_length (images_array);
+      self->images = g_malloc (self->n_images * sizeof (ImgurImage));
+
+      for (i = 0; i < self->n_images; i ++)
+        {
+          imgur_image_init_from_json (&self->images[i],
+                                      json_array_get_object_element (images_array, i));
+          self->images[i].index = i;
+        }
+    }
+  else
+    {
+      self->n_images = 1;
+      self->images = g_malloc (self->n_images * sizeof (ImgurImage));
+
+      imgur_image_init_from_json (&self->images[0], album_obj);
+      self->images[0].index = 0;
+    }
+}
+
 
 G_DEFINE_TYPE (WsImageLoader, ws_image_loader, G_TYPE_OBJECT);
 
@@ -69,21 +98,22 @@ gallery_call_finished_cb (GObject      *source_object,
   GError *error = NULL;
   JsonParser *parser;
   JsonObject *root;
-  int i, n_images;
-  g_message (__FUNCTION__);
+  int i, n_albums;
+  JsonArray *data_array;
+  ImgurGallery *gallery;
 
   rest_proxy_call_invoke_finish (call, result, &error);
-  g_assert_no_error (error);
 
   parser = json_parser_new ();
   json_parser_load_from_data (parser, rest_proxy_call_get_payload (call), -1, &error);
 
-  root = json_node_get_object (json_parser_get_root (parser));
-
   if (error)
     {
-      g_error ("%s", error->message);
+      g_task_return_error (task, error);
+      return;
     }
+
+  root = json_node_get_object (json_parser_get_root (parser));
 
   if (!json_object_has_member (root, "data") ||
       !JSON_NODE_HOLDS_ARRAY (json_object_get_member (root, "data")))
@@ -93,42 +123,47 @@ gallery_call_finished_cb (GObject      *source_object,
       return;
     }
 
-  JsonArray *data_array = json_object_get_array_member (root, "data");
-  n_images = json_array_get_length (data_array);
+  data_array = json_object_get_array_member (root, "data");
+  n_albums = json_array_get_length (data_array);
 
   g_assert (loader);
-  loader->images = (ImgurImage **) g_malloc (n_images * sizeof (ImgurImage *));
 
-  for (i = 0; i < n_images; i ++)
+  gallery = g_malloc0 (sizeof (ImgurGallery));
+  gallery->n_albums = n_albums;
+  gallery->albums = g_malloc (n_albums * sizeof (ImgurAlbum));
+
+  g_message ("albums: %d", n_albums);
+  for (i = 0; i < n_albums; i ++)
     {
-      JsonObject *image_object = json_array_get_object_element (data_array, i);
-      loader->images[i] = g_malloc (sizeof (ImgurImage));
-      ImgurImage *img = loader->images[i];
+      JsonObject *json_object = json_array_get_object_element (data_array, i);
+      ImgurAlbum *album = &gallery->albums[i];
 
-      imgur_image_init_from_json (img, image_object);
-      img->is_album = json_object_get_boolean_member (image_object, "is_album");
+      imgur_album_init_from_json (album, json_object);
     }
 
   g_object_unref (parser);
   g_object_unref (call);
 
-  g_task_return_boolean (task, TRUE);
-
-  loader->n_images = n_images;
+  g_task_return_pointer (task, gallery, NULL);
 }
 
 void
-ws_image_loader_load_gallery_async (WsImageLoader       *loader,
-                                    GCancellable        *cancellable,
-                                    GAsyncReadyCallback  callback,
-                                    gpointer             user_data)
+ws_image_loader_load_gallery_async (WsImageLoader                *loader,
+                                    const ImgurGalleryDefinition *gallery,
+                                    GCancellable                 *cancellable,
+                                    GAsyncReadyCallback           callback,
+                                    gpointer                      user_data)
 {
-  GTask *task;
+  char buff[4096];
   Waster *app = (Waster *)g_application_get_default ();
+  GTask *task;
   LoaderData *data;
-  RestProxyCall *call = rest_proxy_new_call (app->proxy);
+  RestProxyCall *call;
 
-  rest_proxy_call_set_function (call, "gallery/hot/viral/0.json");
+  g_snprintf (buff, sizeof (buff), gallery->function, 0);
+
+  call = rest_proxy_new_call (app->proxy);
+  rest_proxy_call_set_function (call, buff);
   rest_proxy_call_set_method (call, "GET");
 
   task = g_task_new (loader, cancellable, callback, user_data);
@@ -143,12 +178,14 @@ ws_image_loader_load_gallery_async (WsImageLoader       *loader,
                                 data);
 }
 
-void
+ImgurGallery *
 ws_image_loader_load_gallery_finish (WsImageLoader  *loader,
                                      GAsyncResult   *result,
                                      GError        **error)
 {
-  g_return_if_fail (g_task_is_valid (result, loader));
+  g_assert (g_task_is_valid (result, loader));
+
+  return g_task_propagate_pointer (G_TASK (result), error);
 }
 
 static void
@@ -164,7 +201,6 @@ image_call_finished_cb (GObject      *source_object,
   JsonParser *parser = json_parser_new ();
   JsonObject *root;
   JsonArray *data_array;
-  int i;
 
   rest_proxy_call_invoke_finish (call, result, &error);
   if (error)
@@ -173,10 +209,14 @@ image_call_finished_cb (GObject      *source_object,
       return;
     }
 
+  printf("\n\n%s\n\n%s\n\n", __FUNCTION__, rest_proxy_call_get_payload (call));
+
+
   json_parser_load_from_data (parser, rest_proxy_call_get_payload (call), -1, NULL);
   root = json_node_get_object (json_parser_get_root (parser));
   data_array = json_object_get_array_member (root, "data");
 
+#if 0
   image->n_subimages = (int)json_array_get_length (data_array);
   image->subimages = g_malloc (image->n_subimages * sizeof (ImgurImage *));
   for (i = 0; i < image->n_subimages; i ++)
@@ -187,7 +227,7 @@ image_call_finished_cb (GObject      *source_object,
       image->subimages[i]->index = i;
       image->subimages[i]->is_album = FALSE;
     }
-
+#endif
   g_object_unref (parser);
 
   g_task_return_pointer (task, image, NULL);
@@ -218,7 +258,10 @@ ws_image_loader_load_image_async (WsImageLoader       *loader,
       return;
     }
 
-  if (image->is_album)
+  g_message ("%s: ID: %s, Title: %s, Link: %s",
+             __FUNCTION__, image->id, image->title, image->link);
+
+  if (image->is_album && 0)
     {
       LoaderData *data;
       char *function;
@@ -321,7 +364,6 @@ ws_image_loader_new ()
 void
 ws_image_loader_init (WsImageLoader *loader)
 {
-  loader->current = 0;
 }
 
 void

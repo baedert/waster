@@ -29,6 +29,7 @@ sources = [
   'src/waster-impostor.c',
   'src/imgur-proxy.c',
   'src/imgur-proxy-call.c',
+  'src/imgur-gallery.c',
   'src/main.c',
   resources,
 

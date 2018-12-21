@@ -1,3 +1,5 @@
+#include "imgur-gallery.h"
+
 #include "waster-main-window.h"
 #include "waster-image-loader.h"
 #include "waster-initial-state.h"
@@ -19,11 +21,13 @@ struct _WsMainWindow
   GtkWidget *album_view;
   GtkWidget *impostor;
 
+  ImgurGallery *gallery;
+
   WsImageLoader *loader;
 
   GCancellable* cancellables[LOOKAHEAD + 1];
 
-  guint current_image_index;
+  guint current_album_index;
 };
 
 typedef struct _WsMainWindow WsMainWindow;
@@ -37,9 +41,10 @@ static void image_loaded_cb (GObject      *source_object,
 /* }}} */
 
 static void
-show_next_image (WsMainWindow *window)
+show_next_album (WsMainWindow *window)
 {
   WsImageLoader *loader = window->loader;
+  ImgurAlbum *album;
 
   gtk_stack_set_transition_type (GTK_STACK (window->image_stack),
                                  GTK_STACK_TRANSITION_TYPE_NONE);
@@ -59,14 +64,25 @@ show_next_image (WsMainWindow *window)
 
   window->cancellables[0] = g_cancellable_new ();
 
-  window->current_image_index ++;
+  window->current_album_index ++;
+
+  /* TODO: Remove this and load the next page instead */
+  if (window->current_album_index >= window->gallery->n_albums)
+    g_error ("New album index too high: %d but only have %d albums",
+             window->current_album_index, window->gallery->n_albums);
+
+  g_message ("Loading first image!");
+  album = &window->gallery->albums[window->current_album_index];
+
+  ws_album_view_reserve_space (WS_ALBUM_VIEW (window->album_view),
+                               album);
   ws_image_loader_load_image_async (loader,
-                                    loader->images[window->current_image_index],
+                                    &album->images[0], // XXX Proper index!
                                     window->cancellables[0],
                                     image_loaded_cb,
                                     window);
 
-  if (window->current_image_index > 0)
+  if (window->current_album_index > 0)
     gtk_widget_set_sensitive (window->prev_button, TRUE);
 
   gtk_stack_set_visible_child_name (GTK_STACK (window->image_stack), "album");
@@ -75,17 +91,19 @@ show_next_image (WsMainWindow *window)
 static void
 show_prev_image (WsMainWindow *window)
 {
-
+  ImgurAlbum *album;
   WsImageLoader *loader = window->loader;
 
-  window->current_image_index --;
+  window->current_album_index --;
+
+  album = &window->gallery->albums[window->current_album_index];
   ws_image_loader_load_image_async (loader,
-                                    loader->images[window->current_image_index],
+                                    &album->images[0],
                                     NULL,
                                     image_loaded_cb,
                                     window);
 
-  if (window->current_image_index == 0)
+  if (window->current_album_index == 0)
     gtk_widget_set_sensitive (window->prev_button, FALSE);
 }
 
@@ -95,7 +113,7 @@ next_button_clicked_cb (GtkButton *button,
 {
   WsMainWindow *window = user_data;
 
-  show_next_image (window);
+  show_next_album (window);
 }
 
 void
@@ -117,48 +135,16 @@ ws_main_window_new (GtkApplication *app)
 }
 
 static void
-subimage_loaded_cb (GObject      *source_object,
-                    GAsyncResult *result,
-                    gpointer      user_data)
-{
-  GError *error = NULL;
-  WsMainWindow *window = user_data;
-  WsImageLoader *loader = WS_IMAGE_LOADER (source_object);
-  ImgurImage *loaded_image;
-
-  g_message ("Subimage loaded!");
-
-  loaded_image = ws_image_loader_load_image_finish (loader, result, &error);
-
-  if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
-    {
-      g_message ("Subimage loading cancelled");
-      g_error_free (error);
-      return;
-    }
-  else if (error)
-    {
-      g_error_free (error);
-      g_warning ("%s", error->message);
-      return;
-    }
-
-  if (loaded_image)
-    ws_album_view_show_image (WS_ALBUM_VIEW (window->album_view),
-                              loaded_image);
-}
-
-static void
 image_loaded_cb (GObject      *source_object,
                  GAsyncResult *result,
                  gpointer      user_data)
 {
   GError *error = NULL;
-  ImgurImage *img;
+  ImgurImage *image;
   WsImageLoader *loader = WS_IMAGE_LOADER (source_object);
   WsMainWindow  *window = user_data;
 
-  img = ws_image_loader_load_image_finish (loader, result, &error);
+  image = ws_image_loader_load_image_finish (loader, result, &error);
 
 
   if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
@@ -169,37 +155,13 @@ image_loaded_cb (GObject      *source_object,
     }
   else if (error != NULL)
     {
-      g_warning (__FUNCTION__);
-      g_warning ("%s", error->message);
+      g_warning ("%s: %s", __FUNCTION__, error->message);
       g_error_free (error);
       return;
     }
 
-  ws_album_view_reserve_space (WS_ALBUM_VIEW (window->album_view),
-                               img);
-
-  if (img->is_album)
-    {
-      char title[256];
-
-      /* Load the first image now and only load the next images once they
-       * become visible. */
-      ws_image_loader_load_image_async (loader,
-                                        img->subimages[0],
-                                        window->cancellables[0],
-                                        subimage_loaded_cb,
-                                        window);
-      g_snprintf (title, sizeof (title), "[Album (%d)]", img->n_subimages);
-
-      gtk_window_set_title (GTK_WINDOW (window), title);
-    }
-  else
-    {
-      gtk_window_set_title (GTK_WINDOW (window), img->title);
-      ws_album_view_show_image (WS_ALBUM_VIEW (window->album_view),
-                                img);
-    }
-
+  ws_album_view_show_image (WS_ALBUM_VIEW (window->album_view), image);
+  gtk_window_set_title (GTK_WINDOW (window), image->title);
 }
 
 static void
@@ -209,10 +171,10 @@ gallery_loaded_cb (GObject      *source_object,
 {
   GError *error = NULL;
   WsImageLoader *loader = WS_IMAGE_LOADER (source_object);
-  WsMainWindow  *window = user_data;
+  WsMainWindow *window = user_data;
+  ImgurGallery *gallery;
 
-  ws_image_loader_load_gallery_finish (loader, result, &error);
-
+  gallery = ws_image_loader_load_gallery_finish (loader, result, &error);
 
   if (error != NULL)
     {
@@ -220,40 +182,41 @@ gallery_loaded_cb (GObject      *source_object,
       return;
     }
 
-  /* -1 so show_next_image will incrase it to 0 and load that */
-  window->current_image_index = -1;
+  /* -1 so show_next_album will incrase it to 0 and load that */
+  window->current_album_index = -1;
   gtk_stack_set_visible_child_name (GTK_STACK (window->main_stack), "image");
   gtk_stack_set_visible_child_name (GTK_STACK (window->image_stack), "album");
 
-  show_next_image (window);
+  /* TODO: This leaks the gallery and everything it contains! */
+  g_free (window->gallery);
+  window->gallery = gallery;
+
+  show_next_album (window);
 }
 
 static void
-go_next_cb (GSimpleAction *action, GVariant *v, gpointer user_data)
+go_next_cb (GSimpleAction *action,
+            GVariant      *v,
+            gpointer       user_data)
 {
   WsMainWindow *window = user_data;
 
-  if (window->loader->images == NULL)
-    return;
-
-  show_next_image (window);
+  show_next_album (window);
 }
 
 
 static void
-go_prev_cb (GSimpleAction *action, GVariant *v, gpointer user_data)
+go_prev_cb (GSimpleAction *action,
+            GVariant      *v,
+            gpointer       user_data)
 {
-  WsMainWindow *window = user_data;
-
-  if (window->loader->images == NULL)
-    return;
-
   g_assert (0);
 }
 
-
 static void
-go_down_cb (GSimpleAction *action, GVariant *v, gpointer user_data)
+go_down_cb (GSimpleAction *action,
+            GVariant      *v,
+            gpointer       user_data)
 {
   WsMainWindow *window = user_data;
 
@@ -261,7 +224,9 @@ go_down_cb (GSimpleAction *action, GVariant *v, gpointer user_data)
 }
 
 static void
-go_up_cb (GSimpleAction *action, GVariant *v, gpointer user_data)
+go_up_cb (GSimpleAction *action,
+          GVariant      *v,
+          gpointer       user_data)
 {
   WsMainWindow *window = user_data;
 
@@ -298,6 +263,7 @@ ws_main_window_init (WsMainWindow *win)
       gtk_stack_set_visible_child_name (GTK_STACK (win->main_stack), "spinner");
       gtk_spinner_start (GTK_SPINNER (win->spinner));
       ws_image_loader_load_gallery_async (win->loader,
+                                          &IMGUR_GALLERIES[0],
                                           NULL,
                                           gallery_loaded_cb,
                                           win);
