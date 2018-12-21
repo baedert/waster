@@ -46,6 +46,7 @@ show_next_album (WsMainWindow *window)
 {
   WsImageLoader *loader = window->loader;
   ImgurAlbum *album;
+  char buff[4096];
 
   gtk_stack_set_transition_type (GTK_STACK (window->image_stack),
                                  GTK_STACK_TRANSITION_TYPE_NONE);
@@ -84,6 +85,9 @@ show_next_album (WsMainWindow *window)
                                     image_loaded_cb,
                                     window);
 
+  g_snprintf (buff, sizeof (buff), "%s (%d)", album->title, album->n_images);
+  gtk_window_set_title (GTK_WINDOW (window), buff);
+
   if (window->current_album_index > 0)
     gtk_widget_set_sensitive (window->prev_button, TRUE);
 
@@ -95,11 +99,18 @@ show_prev_album (WsMainWindow *window)
 {
   ImgurAlbum *album;
   WsImageLoader *loader = window->loader;
+  char buff[4096];
+
+  if (window->current_album_index == 0)
+    return;
 
   window->current_album_index --;
   window->current_image_index = 0;
 
   album = &window->gallery->albums[window->current_album_index];
+  ws_album_view_reserve_space (WS_ALBUM_VIEW (window->album_view),
+                               album);
+
   ws_image_loader_load_image_async (loader,
                                     &album->images[0],
                                     NULL,
@@ -108,6 +119,9 @@ show_prev_album (WsMainWindow *window)
 
   if (window->current_album_index == 0)
     gtk_widget_set_sensitive (window->prev_button, FALSE);
+
+  g_snprintf (buff, sizeof (buff), "%s (%d)", album->title, album->n_images);
+  gtk_window_set_title (GTK_WINDOW (window), buff);
 }
 
 void
@@ -164,7 +178,6 @@ image_loaded_cb (GObject      *source_object,
     }
 
   ws_album_view_show_image (WS_ALBUM_VIEW (window->album_view), image);
-  gtk_window_set_title (GTK_WINDOW (window), image->title);
 }
 
 static void
@@ -214,7 +227,9 @@ go_prev_cb (GSimpleAction *action,
             GVariant      *v,
             gpointer       user_data)
 {
-  g_assert (0);
+  WsMainWindow *window = user_data;
+
+  show_prev_album (window);
 }
 
 static void
