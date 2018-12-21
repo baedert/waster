@@ -14,7 +14,6 @@ struct _ImgurImage
   int width;
   int height;
   guint is_animated : 1;
-  guint is_album : 1;        /* TODO: REMOVE */
   guint index;
   GdkPaintable *paintable;
 };

@@ -188,6 +188,7 @@ ws_image_loader_load_gallery_finish (WsImageLoader  *loader,
   return g_task_propagate_pointer (G_TASK (result), error);
 }
 
+#if 0
 static void
 image_call_finished_cb (GObject      *source_object,
                         GAsyncResult *result,
@@ -225,13 +226,14 @@ image_call_finished_cb (GObject      *source_object,
       image->subimages[i] = g_malloc (sizeof (ImgurImage));
       imgur_image_init_from_json (image->subimages[i], img_json);
       image->subimages[i]->index = i;
-      image->subimages[i]->is_album = FALSE;
     }
 #endif
   g_object_unref (parser);
 
   g_task_return_pointer (task, image, NULL);
 }
+#endif
+/* TODO: Is the function above really not needed at all? */
 
 void
 ws_image_loader_load_image_async (WsImageLoader       *loader,
@@ -241,9 +243,10 @@ ws_image_loader_load_image_async (WsImageLoader       *loader,
                                   gpointer             user_data)
 {
   GTask *task;
-  Waster *app = (Waster *)g_application_get_default ();
 
   task = g_task_new (loader, cancellable, callback, user_data);
+
+  g_message ("%s: %s", __FUNCTION__, image->link);
 
   /* 'Animated' images, aka videos, are a special case and will be streamed
    * when showing them */
@@ -261,86 +264,64 @@ ws_image_loader_load_image_async (WsImageLoader       *loader,
   g_message ("%s: ID: %s, Title: %s, Link: %s",
              __FUNCTION__, image->id, image->title, image->link);
 
-  if (image->is_album && 0)
-    {
-      LoaderData *data;
-      char *function;
-      RestProxyCall *call = rest_proxy_new_call (app->proxy);
+  {
+    GInputStream *in_stream;
+    GdkPixbufAnimation *animation;
+    GdkPixbuf *pixbuf;
+    SoupMessage *message = soup_message_new ("GET", image->link);
+    SoupSession *session;
+    GError *error = NULL;
+    GBytes *response;
 
-      function = g_strdup_printf ("album/%s/images", image->id);
+    session = soup_session_new ();
 
-      rest_proxy_call_take_function (call, g_strdup_printf ("album/%s/images", image->id));
-      rest_proxy_call_set_method (call, "GET");
+    g_message ("Loading %s", image->link);
 
-      data = g_new (LoaderData, 1);
-      data->loader = loader;
-      data->image = image;
-      data->task = task;
+    soup_session_send_message (session, message);
 
-      rest_proxy_call_invoke_async (call,
-                                    cancellable,
-                                    image_call_finished_cb,
-                                    data);
-    }
-  else
-    {
-      GInputStream *in_stream;
-      GdkPixbufAnimation *animation;
-      GdkPixbuf *pixbuf;
-      SoupMessage *message = soup_message_new ("GET", image->link);
-      SoupSession *session;
-      GError *error = NULL;
-      GBytes *response;
+    g_object_get (message, "response-body-data", &response, NULL);
 
-      session = soup_session_new ();
+    in_stream = g_memory_input_stream_new_from_bytes (response);
 
-      g_message ("Loading %s", image->link);
+    animation = gdk_pixbuf_animation_new_from_stream (in_stream, NULL, &error);
 
-      soup_session_send_message (session, message);
+    if (cancellable != NULL && g_cancellable_is_cancelled (cancellable))
+      {
+        g_task_return_pointer (task, NULL, NULL);
+        return;
+      }
 
-      g_object_get (message, "response-body-data", &response, NULL);
+    if (error)
+      {
+        g_message ("%s: %s", __FUNCTION__, error->message);
 
-      in_stream = g_memory_input_stream_new_from_bytes (response);
+        g_task_return_error (task, error);
 
-      animation = gdk_pixbuf_animation_new_from_stream (in_stream, NULL, &error);
+        g_input_stream_close (in_stream, NULL, NULL);
+        g_object_unref (in_stream);
+        g_bytes_unref (response);
+        return;
+      }
 
-      if (cancellable != NULL && g_cancellable_is_cancelled (cancellable))
-        {
-          g_task_return_pointer (task, NULL, NULL);
-          return;
-        }
+    pixbuf = gdk_pixbuf_animation_get_static_image (animation);
+    image->paintable = GDK_PAINTABLE (gdk_texture_new_for_pixbuf (pixbuf));
 
-      if (error)
-        {
-          g_message ("%s: %s", __FUNCTION__, error->message);
+    if (cancellable != NULL && g_cancellable_is_cancelled (cancellable))
+      {
+        g_task_return_pointer (task, NULL, NULL);
+        return;
+      }
 
-          g_task_return_error (task, error);
+    g_input_stream_close (in_stream, NULL, NULL);
+    g_object_unref (in_stream);
 
-          g_input_stream_close (in_stream, NULL, NULL);
-          g_object_unref (in_stream);
-          g_bytes_unref (response);
-          return;
-        }
+    g_object_unref (animation);
+    g_object_unref (message);
+    g_object_unref (session);
+    g_bytes_unref (response);
 
-      pixbuf = gdk_pixbuf_animation_get_static_image (animation);
-      image->paintable = GDK_PAINTABLE (gdk_texture_new_for_pixbuf (pixbuf));
-
-      if (cancellable != NULL && g_cancellable_is_cancelled (cancellable))
-        {
-          g_task_return_pointer (task, NULL, NULL);
-          return;
-        }
-
-      g_input_stream_close (in_stream, NULL, NULL);
-      g_object_unref (in_stream);
-
-      g_object_unref (animation);
-      g_object_unref (message);
-      g_object_unref (session);
-      g_bytes_unref (response);
-
-      g_task_return_pointer (task, image, NULL);
-    }
+    g_task_return_pointer (task, image, NULL);
+  }
 }
 
 ImgurImage *
