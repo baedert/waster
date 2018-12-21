@@ -4,107 +4,39 @@
 G_DEFINE_TYPE (WsImpostor, ws_impostor, GTK_TYPE_WIDGET);
 
 
-
-
 void
-ws_impostor_clone (WsImpostor *impostor, GtkWidget *widget)
+ws_impostor_clone (WsImpostor *self,
+                   GtkWidget  *widget)
 {
-  cairo_t *context;
+  g_clear_object (&self->paintable);
 
-  /*if (!widget)*/
-
-  /*g_warning ("TODO: Fix %s", __FUNCTION__);*/
-  return;
-
-#if 0
-  if (impostor->surface)
-    cairo_surface_destroy (impostor->surface);
-
-  impostor->w = gtk_widget_get_allocated_width (widget);
-  impostor->h = gtk_widget_get_allocated_height (widget);
-
-  impostor->surface = gdk_window_create_similar_surface (gtk_widget_get_window (widget),
-                                                         CAIRO_CONTENT_COLOR_ALPHA,
-                                                         impostor->w, impostor->h);
-
-  g_assert (impostor->surface != NULL);
-
-  context = cairo_create (impostor->surface);
-
-  g_assert (context != NULL);
-
-  gtk_widget_draw (widget, context);
-
-  cairo_destroy (context);
-#endif
+  self->paintable = gtk_widget_paintable_new (widget);
+  /*self->paintable = gdk_paintable_get_current_image (self->paintable);*/
 }
 
+static void
+ws_impostor_snapshot (GtkWidget   *widget,
+                      GtkSnapshot *snapshot)
+{
+  WsImpostor *self = (WsImpostor *)widget;
 
-/*static void*/
-/*get_preferred_width (GtkWidget *widget,*/
-                     /*int       *min,*/
-                     /*int       *nat)*/
-/*{*/
-  /*WsImpostor *imp = WS_IMPOSTOR (widget);*/
+  if (self->paintable)
+    {
+      gdk_paintable_snapshot (self->paintable,
+                              snapshot,
+                              gtk_widget_get_width (widget),
+                              gtk_widget_get_height (widget));
+    }
 
-  /*if (!imp->surface)*/
-    /*{*/
-      /**min = 1;*/
-      /**nat = 1;*/
-    /*}*/
-  /*else*/
-    /*{*/
-      /**min = imp->w;*/
-      /**nat = imp->w;*/
-    /*}*/
-/*}*/
-
-
-/*static void*/
-/*get_preferred_height (GtkWidget *widget,*/
-                      /*int       *min,*/
-                      /*int       *nat)*/
-/*{*/
-  /*WsImpostor *imp = WS_IMPOSTOR (widget);*/
-
-  /*if (!imp->surface)*/
-    /*{*/
-      /**min = 1;*/
-      /**nat = 1;*/
-    /*}*/
-  /*else*/
-    /*{*/
-      /**min = imp->h;*/
-      /**nat = imp->h;*/
-    /*}*/
-/*}*/
-
-
-/*static gboolean*/
-/*draw (GtkWidget *widget,*/
-      /*cairo_t   *ct)*/
-/*{*/
-  /*WsImpostor *imp = WS_IMPOSTOR (widget);*/
-
-  /*if (imp->surface)*/
-    /*{*/
-      /*cairo_rectangle (ct, 0, 0, gtk_widget_get_allocated_width (widget),*/
-                       /*gtk_widget_get_allocated_height (widget));*/
-      /*cairo_set_source_surface (ct, imp->surface, 0, 0);*/
-      /*cairo_fill (ct);*/
-    /*}*/
-
-  /*return GDK_EVENT_PROPAGATE;*/
-/*}*/
+  g_message ("%s, %p", __FUNCTION__, self->paintable);
+}
 
 static void
 ws_impostor_class_init (WsImpostorClass *class)
 {
   GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (class);
 
-  /*widget_class->get_preferred_width  = get_preferred_width;*/
-  /*widget_class->get_preferred_height = get_preferred_height;*/
-  /*widget_class->draw                 = draw;*/
+  widget_class->snapshot = ws_impostor_snapshot;
 }
 
 static void

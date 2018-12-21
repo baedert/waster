@@ -9,9 +9,7 @@ struct _WsImpostor
 {
   GtkWidget parent_instance;
 
-  cairo_surface_t *surface;
-  int w;
-  int h;
+  GdkPaintable *paintable;
 };
 
 typedef struct _WsImpostor WsImpostor;
