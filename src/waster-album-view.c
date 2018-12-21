@@ -309,7 +309,8 @@ ws_album_view_size_allocate (GtkWidget *widget,
   GtkAllocation child_allocation;
   int i, y;
 
-  if (!view->cur_image) return;
+  if (!view->cur_image)
+      return;
 
   ws_album_view_update_adjustments (view);
 

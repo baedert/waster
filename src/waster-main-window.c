@@ -117,7 +117,7 @@ ws_main_window_new (GtkApplication *app)
 }
 
 static void
-subimage_loaded_cb (GObject *source_object,
+subimage_loaded_cb (GObject      *source_object,
                     GAsyncResult *result,
                     gpointer      user_data)
 {
@@ -170,7 +170,7 @@ image_loaded_cb (GObject      *source_object,
   else if (error != NULL)
     {
       g_warning (__FUNCTION__);
-      g_warning (error->message);
+      g_warning ("%s", error->message);
       g_error_free (error);
       return;
     }
@@ -180,25 +180,18 @@ image_loaded_cb (GObject      *source_object,
 
   if (img->is_album)
     {
-      int i;
-      char *title;
+      char title[256];
 
-      for (i = 0; i < img->n_subimages; i ++)
-        {
-          ImgurImage *subimg = img->subimages[i];
-          ws_image_loader_load_image_async (loader,
-                                            subimg,
-                                            window->cancellables[0],
-                                            subimage_loaded_cb,
-                                            window);
-
-        }
-
-      title = g_strdup_printf ("[Album (%d)]", img->n_subimages);
+      /* Load the first image now and only load the next images once they
+       * become visible. */
+      ws_image_loader_load_image_async (loader,
+                                        img->subimages[0],
+                                        window->cancellables[0],
+                                        subimage_loaded_cb,
+                                        window);
+      g_snprintf (title, sizeof (title), "[Album (%d)]", img->n_subimages);
 
       gtk_window_set_title (GTK_WINDOW (window), title);
-
-      g_free (title);
     }
   else
     {
