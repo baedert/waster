@@ -19,9 +19,9 @@ enum {
 static int
 current_visible_image (WsAlbumView *view)
 {
+  const int widget_height = gtk_widget_get_height (GTK_WIDGET (view));
+  const double current_value = gtk_adjustment_get_value (view->vadjustment);
   int current_visible;
-  int widget_height = gtk_widget_get_height (GTK_WIDGET (view));
-  double current_value = gtk_adjustment_get_value (view->vadjustment);
 
   current_visible = current_value / widget_height;
 
@@ -39,14 +39,12 @@ ws_album_view_value_changed_cb (GtkAdjustment *adjustment, gpointer user_data)
 static void
 ws_album_view_update_adjustments (WsAlbumView *self)
 {
-  int height = 0;
+  const int widget_height = gtk_widget_get_height ((GtkWidget *)self);
   double value = 0.0;
   double max_value;
 
-  height = gtk_widget_get_height (GTK_WIDGET (self)) * self->n_widgets;
-
-  gtk_adjustment_set_upper (self->vadjustment, height);
-  gtk_adjustment_set_page_size (self->vadjustment, gtk_widget_get_height (GTK_WIDGET (self)));
+  gtk_adjustment_set_upper (self->vadjustment, widget_height * self->n_widgets);
+  gtk_adjustment_set_page_size (self->vadjustment, widget_height);
   value = gtk_adjustment_get_value (self->vadjustment);
   max_value = gtk_adjustment_get_upper (self->vadjustment) -
               gtk_adjustment_get_page_size (self->vadjustment);
@@ -76,8 +74,6 @@ ws_album_view_reserve_space (WsAlbumView *self,
   int i;
 
   g_return_if_fail (WS_IS_ALBUM_VIEW (self));
-
-  g_message ("%s!!!!!", __FUNCTION__);
 
   ws_album_view_clear (self);
   self->album = album;
@@ -238,16 +234,54 @@ ws_album_view_size_allocate (GtkWidget *widget,
   WsAlbumView *self= WS_ALBUM_VIEW (widget);
   int i, y;
 
-  /*if (!self->cur_image)*/
-      /*return;*/
-
   ws_album_view_update_adjustments (self);
 
   y = - (int)gtk_adjustment_get_value (self->vadjustment);
+
   for (i = 0; i < self->n_widgets; i ++)
     {
+      int nat_width, nat_height;
+      int final_width = -1;
+      int final_height = -1;
+
+      gtk_widget_measure (self->widgets[i], GTK_ORIENTATION_HORIZONTAL, -1,
+                          NULL, &nat_width, NULL, NULL);
+
+      gtk_widget_measure (self->widgets[i], GTK_ORIENTATION_VERTICAL, -1,
+                          NULL, &nat_height, NULL, NULL);
+
+      if (nat_width > width)
+        {
+          final_width = width; /* Force into parent allocation */
+
+          /* Re-negotiate natural height */
+          gtk_widget_measure (self->widgets[i], GTK_ORIENTATION_VERTICAL, final_width,
+                              NULL, &nat_height, NULL, NULL);
+        }
+      else
+        {
+          final_width = nat_width;
+        }
+
+      /* Same vertically */
+      if (nat_height > height)
+        {
+          final_height = height;
+          /* Re-negotiate natural height */
+          gtk_widget_measure (self->widgets[i], GTK_ORIENTATION_HORIZONTAL, final_height,
+                              NULL, &nat_width, NULL, NULL);
+          final_width = nat_width;
+        }
+      else
+        {
+          final_height = nat_height;
+        }
+
       gtk_widget_size_allocate (self->widgets[i],
-                                &(GtkAllocation) { 0, y, width, height }, -1);
+                                &(GtkAllocation) {
+                                  (width - final_width) / 2, y + (height - final_height) / 2,
+                                  final_width, final_height
+                                }, -1);
 
       y += height;
     }

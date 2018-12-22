@@ -17,11 +17,19 @@ ws_image_view_new (int width,
 }
 
 void
-ws_image_view_set_contents (WsImageView  *view,
+ws_image_view_set_contents (WsImageView  *self,
                             GdkPaintable *paintable)
 {
-  gtk_picture_set_paintable (GTK_PICTURE (view->picture),
+  gtk_picture_set_paintable (GTK_PICTURE (self->picture),
                              paintable);
+}
+
+static GtkSizeRequestMode
+ws_image_view_get_request_mode (GtkWidget *widget)
+{
+  WsImageView *self = WS_IMAGE_VIEW (widget);
+
+  return gtk_widget_get_request_mode (self->picture);
 }
 
 static void
@@ -33,9 +41,9 @@ ws_image_view_measure (GtkWidget      *widget,
                        int            *minimum_baseline,
                        int            *natural_baseline)
 {
-  WsImageView *view = WS_IMAGE_VIEW (widget);
+  WsImageView *self = WS_IMAGE_VIEW (widget);
 
-  gtk_widget_measure (view->picture, orientation, for_size,
+  gtk_widget_measure (self->picture, orientation, for_size,
                       minimum, natural, minimum_baseline, natural_baseline);
 }
 
@@ -45,9 +53,9 @@ ws_image_view_size_allocate (GtkWidget *widget,
                              int        height,
                              int        baseline)
 {
-  WsImageView *view = WS_IMAGE_VIEW (widget);
+  WsImageView *self = WS_IMAGE_VIEW (widget);
 
-  gtk_widget_size_allocate (view->picture,
+  gtk_widget_size_allocate (self->picture,
                             &(GtkAllocation) { 0, 0, width, height },
                             -1);
 
@@ -73,13 +81,14 @@ ws_image_view_class_init (WsImageViewClass *klass)
 
   widget_class->measure = ws_image_view_measure;
   widget_class->size_allocate = ws_image_view_size_allocate;
+  widget_class->get_request_mode = ws_image_view_get_request_mode;
 }
 
 static void
-ws_image_view_init (WsImageView *view)
+ws_image_view_init (WsImageView *self)
 {
-  gtk_widget_set_has_surface (GTK_WIDGET (view), FALSE);
+  gtk_widget_set_has_surface (GTK_WIDGET (self), FALSE);
 
-  view->picture = gtk_picture_new ();
-  gtk_widget_set_parent (view->picture, GTK_WIDGET (view));
+  self->picture = gtk_picture_new ();
+  gtk_widget_set_parent (self->picture, GTK_WIDGET (self));
 }
