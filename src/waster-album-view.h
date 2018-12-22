@@ -4,6 +4,7 @@
 #include <gtk/gtk.h>
 
 #include "waster-image-loader.h"
+#include "CbAnimation.h"
 
 struct _WsAlbumView
 {
@@ -20,6 +21,10 @@ struct _WsAlbumView
   GtkWidget **widgets;
 
   int cur_visible_image;
+
+  double scroll_start_value;
+  double scroll_end_value;
+  CbAnimation scroll_animation;
 };
 
 typedef struct _WsAlbumView WsAlbumView;

@@ -107,16 +107,37 @@ ws_album_view_show_image (WsAlbumView *self,
                               image->paintable);
 }
 
-void
-ws_album_view_scroll_to_next (WsAlbumView *view)
+static void
+scroll_animate_func (CbAnimation *animation,
+                     double       t,
+                     gpointer     user_data)
 {
+  WsAlbumView *self = (WsAlbumView *)animation->owner;
+
+  gtk_adjustment_set_value (self->vadjustment,
+                            self->scroll_start_value + t * (self->scroll_end_value - self->scroll_start_value));
+
+  gtk_widget_queue_allocate (GTK_WIDGET (self));
+}
+
+void
+ws_album_view_scroll_to_next (WsAlbumView *self)
+{
+  const int widget_height = gtk_widget_get_height (GTK_WIDGET (self));
+  const int current_visible = current_visible_image (self);
   int height = 0;
-  int widget_height = gtk_widget_get_height (GTK_WIDGET (view));
-  int current_visible = current_visible_image (view);
 
   height = (current_visible * widget_height) + widget_height;
 
-  gtk_adjustment_set_value (view->vadjustment, height);
+
+  self->scroll_start_value = gtk_adjustment_get_value (self->vadjustment);
+  self->scroll_end_value = height;
+
+  /* TODO: Check for animated animations and whatever */
+  cb_animation_start (&self->scroll_animation, NULL);
+
+  /* Kick off */
+  gtk_widget_queue_allocate (GTK_WIDGET (self));
 }
 
 void
@@ -321,6 +342,8 @@ ws_album_view_init (WsAlbumView *self)
   gtk_widget_set_has_surface (GTK_WIDGET (self), FALSE);
   self->widgets = NULL;
   self->n_widgets = 0;
+
+  cb_animation_init (&self->scroll_animation, GTK_WIDGET (self), scroll_animate_func);
 }
 
 static void

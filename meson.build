@@ -34,6 +34,9 @@ sources = [
   'src/main.c',
   resources,
 
+  # Copied from Corebird
+  'src/CbAnimation.c',
+
   # Librest
   'src/rest/rest-param.c',
   'src/rest/rest-params.c',
@@ -45,8 +48,6 @@ sources = [
   'src/rest/oauth2-proxy.c',
   'src/rest/oauth2-proxy-call.c',
   'src/rest/sha1.c',
-
-
 ]
 
 cdata = configuration_data()
