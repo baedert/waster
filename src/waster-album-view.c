@@ -305,6 +305,10 @@ static void
 ws_album_view_finalize (GObject *object)
 {
   WsAlbumView *self = WS_ALBUM_VIEW (object);
+  int i;
+
+  for (i = 0; i < self->n_widgets; i ++)
+    gtk_widget_unparent (self->widgets[i]);
 
   g_free (self->widgets);
 
