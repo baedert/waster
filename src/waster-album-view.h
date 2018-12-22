@@ -20,8 +20,6 @@ struct _WsAlbumView
   int n_widgets;
   GtkWidget **widgets;
 
-  int cur_visible_image;
-
   double scroll_start_value;
   double scroll_end_value;
   CbAnimation scroll_animation;
