@@ -21,8 +21,8 @@ G_DEFINE_TYPE (Waster, ws, GTK_TYPE_APPLICATION);
 gboolean
 waster_is_proxy_inited (Waster *waster)
 {
-  gchar *access_token;
-  gchar *refresh_token;
+  char *access_token;
+  char *refresh_token;
   gboolean inited;
 
   access_token  = g_settings_get_string (waster->settings, "access-token");
@@ -38,7 +38,7 @@ waster_is_proxy_inited (Waster *waster)
 }
 
 
-gchar *
+char *
 waster_get_login_url (Waster *waster)
 {
   GHashTable *params = g_hash_table_new (g_str_hash, g_str_equal);
@@ -58,8 +58,8 @@ waster_get_login_url (Waster *waster)
 
 void
 waster_set_access_tokens (Waster       *waster,
-                          const gchar  *access_token,
-                          const gchar  *refresh_token)
+                          const char  *access_token,
+                          const char  *refresh_token)
 {
   gint64 timestamp = g_date_time_to_unix (g_date_time_new_now_local ());
   oauth2_proxy_set_access_token (OAUTH2_PROXY (waster->proxy),
@@ -89,10 +89,10 @@ waster_is_token_expired (Waster *waster)
 
 void
 waster_maybe_refresh_token (Waster      *waster,
-                            const gchar *pin)
+                            const char *pin)
 {
   const char *refresh_token;
-  gchar *req;
+  char *req;
   SoupSession *session;
   SoupMessage *message;
   SoupMessageBody *response_body;
@@ -222,7 +222,7 @@ ws_init (Waster *waster)
 
   if (waster_is_proxy_inited (waster))
     {
-      gchar *access_token = g_settings_get_string (waster->settings, "access-token");
+      char *access_token = g_settings_get_string (waster->settings, "access-token");
       oauth2_proxy_set_access_token (OAUTH2_PROXY (waster->proxy), access_token);
 
       waster_maybe_refresh_token (waster, NULL);
