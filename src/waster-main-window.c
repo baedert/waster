@@ -274,12 +274,11 @@ go_down_cb (GSimpleAction *action,
       self->current_image_index ++;
       image = &album->images[self->current_image_index];
 
-      if (image->paintable == NULL)
-        ws_image_loader_load_image_async (self->loader,
-                                          &album->images[self->current_image_index],
-                                          self->cancellables[0],
-                                          image_loaded_cb,
-                                          self);
+      ws_image_loader_load_image_async (self->loader,
+                                        &album->images[self->current_image_index],
+                                        self->cancellables[0],
+                                        image_loaded_cb,
+                                        self);
 
       ws_album_view_scroll_to_next (WS_ALBUM_VIEW (self->album_view));
     }

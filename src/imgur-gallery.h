@@ -13,9 +13,11 @@ struct _ImgurImage
   char *link;
   int width;
   int height;
-  guint is_animated : 1;
   guint index;
   GdkPaintable *paintable; /* NULL if not loaded! */
+
+  guint is_animated : 1;
+  guint loaded : 1;
 };
 
 typedef struct _ImgurImage ImgurImage;
