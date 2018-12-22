@@ -121,7 +121,7 @@ waster_maybe_refresh_token (Waster      *waster,
       char *refresh_token = g_settings_get_string (waster->settings, "refresh-token");
       g_string_append (request, "&grant_type=refresh_token&refresh_token=");
       g_string_append (request, refresh_token);
-      g_free ((char *)refresh_token);
+      g_free (refresh_token);
     }
   else
     {
