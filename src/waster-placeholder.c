@@ -36,8 +36,8 @@ ws_placeholder_snapshot (GdkPaintable *paintable,
 static GdkPaintableFlags
 ws_placeholder_get_flags (GdkPaintable *paintable)
 {
-  return GDK_PAINTABLE_STATIC_SIZE
-       | GDK_PAINTABLE_STATIC_CONTENTS;
+  return GDK_PAINTABLE_STATIC_SIZE |
+         GDK_PAINTABLE_STATIC_CONTENTS;
 }
 
 static int

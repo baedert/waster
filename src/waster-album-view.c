@@ -90,6 +90,10 @@ ws_album_view_reserve_space (WsAlbumView *self,
 
       self->widgets[i] = content_view;
       gtk_widget_set_parent (content_view, GTK_WIDGET (self));
+
+      if (album->images[i].paintable != NULL)
+        ws_image_view_set_contents (WS_IMAGE_VIEW (self->widgets[i]),
+                                    album->images[i].paintable);
     }
 
   ws_album_view_update_adjustments (self);

@@ -13,10 +13,16 @@ imgur_image_init_from_json (ImgurImage *self,
   g_free (self->id);
   self->id = g_strdup (json_object_get_string_member (json_obj, "id"));
 
+  g_clear_object (&self->paintable);
   if (json_object_has_member (json_obj, "width"))
     {
       self->width  = json_object_get_int_member (json_obj, "width");
       self->height = json_object_get_int_member (json_obj, "height");
+      self->paintable = ws_placeholder_new (self->width, self->height);
+    }
+  else
+    {
+      self->paintable = ws_placeholder_new (200, 200);
     }
 
   g_free (self->title);
@@ -36,7 +42,6 @@ imgur_image_init_from_json (ImgurImage *self,
   else
     self->link = g_strdup (json_object_get_string_member (json_obj, "link"));
 
-  g_clear_object (&self->paintable);
 }
 
 static void
