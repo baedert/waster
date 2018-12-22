@@ -371,4 +371,6 @@ ws_album_view_class_init (WsAlbumViewClass *class)
   g_object_class_override_property (object_class, PROP_VADJUSTMENT, "vadjustment");
   g_object_class_override_property (object_class, PROP_HSCROLL_POLICY, "hscroll-policy");
   g_object_class_override_property (object_class, PROP_VSCROLL_POLICY, "vscroll-policy");
+
+  gtk_widget_class_set_css_name (widget_class, "album");
 }

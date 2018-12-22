@@ -3,5 +3,6 @@
     <file compressed="true" preprocess="xml-stripblanks">ui/initial-state.ui</file>
     <file compressed="true" preprocess="xml-stripblanks">ui/main-window.ui</file>
     <file>data/initial-state.png</file>
+    <file>ui/style.css</file>
   </gresource>
 </gresources>

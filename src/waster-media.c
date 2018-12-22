@@ -82,6 +82,8 @@ ws_image_view_class_init (WsImageViewClass *klass)
   widget_class->measure = ws_image_view_measure;
   widget_class->size_allocate = ws_image_view_size_allocate;
   widget_class->get_request_mode = ws_image_view_get_request_mode;
+
+  gtk_widget_class_set_css_name (widget_class, "media");
 }
 
 static void

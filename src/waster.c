@@ -202,6 +202,17 @@ startup (GApplication *app)
 
   settings = gtk_settings_get_default ();
   g_object_set (G_OBJECT (settings), "gtk-application-prefer-dark-theme", TRUE, NULL);
+
+  /* Custom CSS */
+  {
+    GtkCssProvider *provider = gtk_css_provider_new ();
+
+    gtk_css_provider_load_from_resource (provider, "/org/baedert/waster/ui/style.css");
+    gtk_style_context_add_provider_for_display (gdk_display_get_default (),
+                                                GTK_STYLE_PROVIDER (provider),
+                                                GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);\
+  }
+
 }
 
 
