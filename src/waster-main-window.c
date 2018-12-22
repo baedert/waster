@@ -40,6 +40,7 @@ album_loaded_cb (GObject      *source_object,
                  GAsyncResult *result,
                  gpointer      user_data)
 {
+  WsMainWindow *window = user_data;
   GError *error = NULL;
   ImgurAlbum *album;
   WsImageLoader *loader = WS_IMAGE_LOADER (source_object);
@@ -58,6 +59,9 @@ album_loaded_cb (GObject      *source_object,
       g_error_free (error);
       return;
     }
+
+  ws_album_view_reserve_space (WS_ALBUM_VIEW (window->album_view),
+                               album);
 }
 
 static void
