@@ -149,7 +149,9 @@ waster_maybe_refresh_token (Waster      *waster,
   const char *result = (const char *) response_body->data;
 
   JsonParser *parser = json_parser_new ();
-  if (!json_parser_load_from_data (parser, result, -1, &error))
+  json_parser_load_from_data (parser, result, -1, &error);
+
+  if (error)
     {
       printf ("%s\n", result);
       g_error ("%s", error->message);
