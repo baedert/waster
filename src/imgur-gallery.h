@@ -15,7 +15,7 @@ struct _ImgurImage
   int height;
   guint is_animated : 1;
   guint index;
-  GdkPaintable *paintable;
+  GdkPaintable *paintable; /* NULL if not loaded! */
 };
 
 typedef struct _ImgurImage ImgurImage;
@@ -28,6 +28,8 @@ typedef struct {
 
   char id[64];
   char *title;
+
+  guint loaded : 1;
 
 } ImgurAlbum;
 

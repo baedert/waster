@@ -35,11 +35,59 @@ typedef struct _WsMainWindow WsMainWindow;
 
 G_DEFINE_TYPE (WsMainWindow, ws_main_window, GTK_TYPE_APPLICATION_WINDOW);
 
-/* Prototypes {{{ */
-static void image_loaded_cb (GObject      *source_object,
-                             GAsyncResult *result,
-                             gpointer      user_data);
-/* }}} */
+static void
+album_loaded_cb (GObject      *source_object,
+                 GAsyncResult *result,
+                 gpointer      user_data)
+{
+  GError *error = NULL;
+  ImgurAlbum *album;
+  WsImageLoader *loader = WS_IMAGE_LOADER (source_object);
+
+  album = ws_image_loader_load_album_finish (loader, result, &error);
+
+  if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
+    {
+      g_error_free (error);
+      g_message ("album lading cancelled");
+      return;
+    }
+  else if (error != NULL)
+    {
+      g_warning ("%s: %s", __FUNCTION__, error->message);
+      g_error_free (error);
+      return;
+    }
+}
+
+static void
+image_loaded_cb (GObject      *source_object,
+                 GAsyncResult *result,
+                 gpointer      user_data)
+{
+  GError *error = NULL;
+  ImgurImage *image;
+  WsImageLoader *loader = WS_IMAGE_LOADER (source_object);
+  WsMainWindow  *window = user_data;
+
+  image = ws_image_loader_load_image_finish (loader, result, &error);
+
+
+  if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
+    {
+      g_error_free (error);
+      g_message ("image lading cancelled");
+      return;
+    }
+  else if (error != NULL)
+    {
+      g_warning ("%s: %s", __FUNCTION__, error->message);
+      g_error_free (error);
+      return;
+    }
+
+  ws_album_view_show_image (WS_ALBUM_VIEW (window->album_view), image);
+}
 
 static void
 show_next_album (WsMainWindow *window)
@@ -74,11 +122,17 @@ show_next_album (WsMainWindow *window)
     g_error ("New album index too high: %d but only have %d albums",
              window->current_album_index, window->gallery->n_albums);
 
-  g_message ("Loading first image!");
   album = &window->gallery->albums[window->current_album_index];
 
   ws_album_view_reserve_space (WS_ALBUM_VIEW (window->album_view),
                                album);
+
+  ws_image_loader_load_album_async (loader,
+                                    album,
+                                    NULL,
+                                    album_loaded_cb,
+                                    window);
+
   ws_image_loader_load_image_async (loader,
                                     &album->images[window->current_image_index],
                                     window->cancellables[0],
@@ -149,35 +203,6 @@ ws_main_window_new (GtkApplication *app)
                        "show-menubar", FALSE,
                        "application", app,
                        NULL);
-}
-
-static void
-image_loaded_cb (GObject      *source_object,
-                 GAsyncResult *result,
-                 gpointer      user_data)
-{
-  GError *error = NULL;
-  ImgurImage *image;
-  WsImageLoader *loader = WS_IMAGE_LOADER (source_object);
-  WsMainWindow  *window = user_data;
-
-  image = ws_image_loader_load_image_finish (loader, result, &error);
-
-
-  if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
-    {
-      g_error_free (error);
-      g_message ("image lading cancelled");
-      return;
-    }
-  else if (error != NULL)
-    {
-      g_warning ("%s: %s", __FUNCTION__, error->message);
-      g_error_free (error);
-      return;
-    }
-
-  ws_album_view_show_image (WS_ALBUM_VIEW (window->album_view), image);
 }
 
 static void

@@ -6,44 +6,57 @@
 #include <libsoup/soup.h>
 
 static void
-imgur_image_init_from_json (ImgurImage *img,
+imgur_image_init_from_json (ImgurImage *self,
                             JsonObject *json_obj)
 {
-  img->id = g_strdup (json_object_get_string_member (json_obj, "id"));
+  g_free (self->id);
+  self->id = g_strdup (json_object_get_string_member (json_obj, "id"));
 
   if (json_object_has_member (json_obj, "width"))
     {
-      img->width  = json_object_get_int_member (json_obj, "width");
-      img->height = json_object_get_int_member (json_obj, "height");
+      self->width  = json_object_get_int_member (json_obj, "width");
+      self->height = json_object_get_int_member (json_obj, "height");
     }
 
+  g_free (self->title);
   if (json_object_get_null_member (json_obj, "title"))
-    img->title = NULL;
+    self->title = NULL;
   else
-    img->title = g_strdup (json_object_get_string_member (json_obj, "title"));
+    self->title = g_strdup (json_object_get_string_member (json_obj, "title"));
 
   if (json_object_has_member (json_obj, "animated"))
-    img->is_animated = json_object_get_boolean_member (json_obj, "animated");
+    self->is_animated = json_object_get_boolean_member (json_obj, "animated");
   else
-    img->is_animated = FALSE;
+    self->is_animated = FALSE;
 
-  if (img->is_animated)
-    img->link = g_strdup (json_object_get_string_member (json_obj, "mp4"));
+  g_free (self->link);
+  if (self->is_animated)
+    self->link = g_strdup (json_object_get_string_member (json_obj, "mp4"));
   else
-    img->link = g_strdup (json_object_get_string_member (json_obj, "link"));
+    self->link = g_strdup (json_object_get_string_member (json_obj, "link"));
 
-  img->paintable = NULL;
+  g_clear_object (&self->paintable);
 }
 
 static void
 imgur_album_init_from_json (ImgurAlbum *self,
                             JsonObject *album_obj)
 {
+  int n_images;
 
   self->title = g_strdup (json_object_get_string_member (album_obj, "title"));
 
   g_snprintf (self->id, sizeof (self->id), "%s",
               json_object_get_string_member (album_obj, "id"));
+
+  if (json_object_has_member (album_obj, "images_count"))
+    n_images = (int) json_object_get_int_member (album_obj, "images_count");
+  else if (json_object_has_member (album_obj, "images"))
+    n_images = (int) json_array_get_length (json_object_get_array_member (album_obj, "images"));
+  else
+    n_images = 1;
+
+  self->n_images = n_images;
 
   /* Some of these json objects have an "images" array, even if the array only contains
    * one element. Some of them don't have it in that case though. Let's map both of those
@@ -51,26 +64,30 @@ imgur_album_init_from_json (ImgurAlbum *self,
   if (json_object_has_member (album_obj, "images"))
     {
       JsonArray *images_array;
-      int i;
+      int i, p;
 
       images_array = json_object_get_array_member (album_obj, "images");
-      self->n_images = json_array_get_length (images_array);
-      self->images = g_malloc (self->n_images * sizeof (ImgurImage));
+      self->images = g_malloc0 (self->n_images * sizeof (ImgurImage));
 
-      for (i = 0; i < self->n_images; i ++)
+      p = (int) json_array_get_length (images_array);
+      for (i = 0; i < p; i ++)
         {
           imgur_image_init_from_json (&self->images[i],
                                       json_array_get_object_element (images_array, i));
           self->images[i].index = i;
         }
+
+      /* If the images array (or the album object itself) already contains all the images
+       * of the album, let's mark it as loaded. */
+      self->loaded = (self->n_images == p);
     }
   else
     {
-      self->n_images = 1;
-      self->images = g_malloc (self->n_images * sizeof (ImgurImage));
+      self->images = g_malloc0 (self->n_images * sizeof (ImgurImage));
 
       imgur_image_init_from_json (&self->images[0], album_obj);
       self->images[0].index = 0;
+      self->loaded = TRUE; /* Naturally */
     }
 }
 
@@ -82,7 +99,7 @@ typedef struct _WsImageLoader WsImageLoader;
 typedef struct
 {
   WsImageLoader *loader;
-  ImgurImage *image;
+  void *payload;
   GTask *task;
 } LoaderData;
 
@@ -130,9 +147,8 @@ gallery_call_finished_cb (GObject      *source_object,
 
   gallery = g_malloc0 (sizeof (ImgurGallery));
   gallery->n_albums = n_albums;
-  gallery->albums = g_malloc (n_albums * sizeof (ImgurAlbum));
+  gallery->albums = g_malloc0 (n_albums * sizeof (ImgurAlbum));
 
-  g_message ("albums: %d", n_albums);
   for (i = 0; i < n_albums; i ++)
     {
       JsonObject *json_object = json_array_get_object_element (data_array, i);
@@ -188,52 +204,109 @@ ws_image_loader_load_gallery_finish (WsImageLoader  *loader,
   return g_task_propagate_pointer (G_TASK (result), error);
 }
 
-#if 0
+
 static void
-image_call_finished_cb (GObject      *source_object,
+album_call_finished_cb (GObject      *source_object,
                         GAsyncResult *result,
                         gpointer      user_data)
 {
   RestProxyCall *call = REST_PROXY_CALL (source_object);
-  GError *error = NULL;
   LoaderData *data = user_data;
   GTask *task = data->task;
-  ImgurImage *image = data->image;
-  JsonParser *parser = json_parser_new ();
+  ImgurAlbum *album = data->payload;
+  GError *error = NULL;
+  JsonParser *parser;
   JsonObject *root;
+  int i;
   JsonArray *data_array;
 
   rest_proxy_call_invoke_finish (call, result, &error);
+
   if (error)
     {
       g_task_return_error (task, error);
       return;
     }
 
-  printf("\n\n%s\n\n%s\n\n", __FUNCTION__, rest_proxy_call_get_payload (call));
+  parser = json_parser_new ();
+  json_parser_load_from_data (parser, rest_proxy_call_get_payload (call), -1, &error);
 
+  if (error)
+    {
+      g_task_return_error (task, error);
+      return;
+    }
 
-  json_parser_load_from_data (parser, rest_proxy_call_get_payload (call), -1, NULL);
   root = json_node_get_object (json_parser_get_root (parser));
   data_array = json_object_get_array_member (root, "data");
 
-#if 0
-  image->n_subimages = (int)json_array_get_length (data_array);
-  image->subimages = g_malloc (image->n_subimages * sizeof (ImgurImage *));
-  for (i = 0; i < image->n_subimages; i ++)
-    {
-      JsonObject *img_json = json_array_get_object_element (data_array, i);
-      image->subimages[i] = g_malloc (sizeof (ImgurImage));
-      imgur_image_init_from_json (image->subimages[i], img_json);
-      image->subimages[i]->index = i;
-    }
-#endif
-  g_object_unref (parser);
+  g_assert_cmpint (json_array_get_length (data_array), ==, album->n_images);
 
-  g_task_return_pointer (task, image, NULL);
+  /* This will override the few images at the beginning we've already initialized but whatever */
+  for (i = 0; i < album->n_images; i ++)
+    {
+      ImgurImage *image = &album->images[i];
+
+      imgur_image_init_from_json (image, json_array_get_object_element (data_array, i));
+      image->index = i;
+    }
+
+  g_object_unref (parser);
+  g_object_unref (call);
+
+  album->loaded = TRUE;
+
+  g_task_return_pointer (task, album, NULL);
 }
-#endif
-/* TODO: Is the function above really not needed at all? */
+
+void
+ws_image_loader_load_album_async (WsImageLoader       *loader,
+                                  ImgurAlbum          *album,
+                                  GCancellable        *cancellable,
+                                  GAsyncReadyCallback  callback,
+                                  gpointer             user_data)
+{
+  char buff[4096];
+  Waster *app = (Waster *)g_application_get_default ();
+  GTask *task;
+  LoaderData *data;
+  RestProxyCall *call;
+
+  g_assert (album != NULL);
+
+  task = g_task_new (loader, cancellable, callback, user_data);
+
+  if (album->loaded)
+    {
+      g_task_return_pointer (task, album, NULL);
+      g_object_unref (task);
+      return;
+    }
+
+  g_snprintf (buff, sizeof (buff), "album/%s/images", album->id);
+
+  call = rest_proxy_new_call (app->proxy);
+  rest_proxy_call_set_function (call, buff);
+  rest_proxy_call_set_method (call, "GET");
+
+  data = g_new (LoaderData, 1);
+  data->loader = loader;
+  data->task = task;
+  data->payload = album;
+
+  rest_proxy_call_invoke_async (call,
+                                cancellable,
+                                album_call_finished_cb,
+                                data);
+}
+
+ImgurAlbum *
+ws_image_loader_load_album_finish (WsImageLoader  *loader,
+                                   GAsyncResult   *result,
+                                   GError        **error)
+{
+  return g_task_propagate_pointer (G_TASK (result), error);
+}
 
 void
 ws_image_loader_load_image_async (WsImageLoader       *loader,
@@ -325,8 +398,8 @@ ws_image_loader_load_image_async (WsImageLoader       *loader,
 }
 
 ImgurImage *
-ws_image_loader_load_image_finish (WsImageLoader *loader,
-                                   GAsyncResult  *result,
+ws_image_loader_load_image_finish (WsImageLoader  *loader,
+                                   GAsyncResult   *result,
                                    GError        **error)
 {
   g_return_val_if_fail (g_task_is_valid (result, loader), NULL);

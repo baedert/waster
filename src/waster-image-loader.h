@@ -30,13 +30,22 @@ ImgurGallery *    ws_image_loader_load_gallery_finish     (WsImageLoader        
                                                            GAsyncResult                 *result,
                                                            GError                      **error);
 
+void              ws_image_loader_load_album_async        (WsImageLoader                *loader,
+                                                           ImgurAlbum                   *album,
+                                                           GCancellable                 *cancellable,
+                                                           GAsyncReadyCallback           callback,
+                                                           gpointer                      user_data);
+ImgurAlbum *      ws_image_loader_load_album_finish       (WsImageLoader                *loader,
+                                                           GAsyncResult                 *result,
+                                                           GError                      **error);
 
-void ws_image_loader_load_image_async (WsImageLoader       *loader,
-                                       ImgurImage          *image,
-                                       GCancellable        *cancellable,
-                                       GAsyncReadyCallback  callback,
-                                       gpointer             user_data);
-ImgurImage * ws_image_loader_load_image_finish (WsImageLoader  *loader,
-                                               GAsyncResult    *result,
-                                               GError         **error);
+void              ws_image_loader_load_image_async        (WsImageLoader                *loader,
+                                                           ImgurImage                   *image,
+                                                           GCancellable                 *cancellable,
+                                                           GAsyncReadyCallback           callback,
+                                                           gpointer                      user_data);
+ImgurImage *      ws_image_loader_load_image_finish       (WsImageLoader                *loader,
+                                                           GAsyncResult                 *result,
+                                                           GError                      **error);
+
 #endif
