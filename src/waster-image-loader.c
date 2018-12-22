@@ -25,6 +25,8 @@ imgur_image_init_from_json (ImgurImage *self,
       self->paintable = ws_placeholder_new (200, 200);
     }
 
+  g_assert (self->paintable);
+
   g_free (self->title);
   if (json_object_get_null_member (json_obj, "title"))
     self->title = NULL;
@@ -133,6 +135,12 @@ gallery_call_finished_cb (GObject      *source_object,
   ImgurGallery *gallery;
 
   rest_proxy_call_invoke_finish (call, result, &error);
+
+  if (error)
+    {
+      g_task_return_error (task, error);
+      return;
+    }
 
   parser = json_parser_new ();
   json_parser_load_from_data (parser, rest_proxy_call_get_payload (call), -1, &error);
@@ -360,14 +368,17 @@ soup_message_cb (SoupSession *session,
     }
 
   paintable = GDK_PAINTABLE (gdk_texture_new_for_pixbuf (pixbuf));
-  g_set_object (&image->paintable, paintable);
-  image->loaded = TRUE;
 
   if (cancellable != NULL && g_cancellable_is_cancelled (cancellable))
     {
       g_task_return_pointer (task, NULL, NULL);
+      g_object_unref (paintable);
       return;
     }
+
+  g_clear_object (&image->paintable);
+  image->paintable = paintable;
+  image->loaded = TRUE;
 
   g_input_stream_close (in_stream, NULL, NULL);
   g_object_unref (in_stream);
@@ -393,6 +404,13 @@ ws_image_loader_load_image_async (WsImageLoader       *loader,
 
   task = g_task_new (loader, cancellable, callback, user_data);
 
+  if (image->loaded)
+    {
+      g_task_return_pointer (task, image, NULL);
+      g_object_unref (task);
+      return;
+    }
+
   /* 'Animated' images, aka videos, are a special case and will be streamed
    * when showing them */
   if (image->is_animated)
@@ -402,13 +420,6 @@ ws_image_loader_load_image_async (WsImageLoader       *loader,
       gtk_media_stream_set_loop (GTK_MEDIA_STREAM (image->paintable), TRUE);
       gtk_media_stream_play (GTK_MEDIA_STREAM (image->paintable));
 
-      g_task_return_pointer (task, image, NULL);
-      g_object_unref (task);
-      return;
-    }
-
-  if (image->loaded)
-    {
       g_task_return_pointer (task, image, NULL);
       g_object_unref (task);
       return;
