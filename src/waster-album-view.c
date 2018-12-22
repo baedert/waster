@@ -138,6 +138,9 @@ ws_album_view_scroll_to_next (WsAlbumView *self)
   self->scroll_end_value = height;
 
   /* TODO: Check for animated animations and whatever */
+  if (cb_animation_is_running (&self->scroll_animation))
+    cb_animation_stop (&self->scroll_animation);
+
   cb_animation_start (&self->scroll_animation, NULL);
 
   /* Kick off */
