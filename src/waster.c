@@ -42,13 +42,14 @@ gchar *
 waster_get_login_url (Waster *waster)
 {
   GHashTable *params = g_hash_table_new (g_str_hash, g_str_equal);
+  char *login_url;
 
   g_hash_table_insert (params, "client_id",     CLIENT_ID);
   g_hash_table_insert (params, "response_type", "pin");
 
-  gchar *login_url = oauth2_proxy_build_login_url_full (OAUTH2_PROXY (waster->proxy),
-                                                        "",
-                                                        params);
+  login_url = oauth2_proxy_build_login_url_full (OAUTH2_PROXY (waster->proxy),
+                                                 "",
+                                                 params);
 
   g_hash_table_destroy (params);
 
