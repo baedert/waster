@@ -1,1 +1,0 @@
-#include "waster-image.h"
