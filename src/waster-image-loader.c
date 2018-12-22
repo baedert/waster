@@ -1,5 +1,6 @@
 #include "waster-image-loader.h"
 #include "waster.h"
+#include "waster-placeholder.h"
 
 #include <glib.h>
 #include <json-glib/json-glib.h>
@@ -102,6 +103,13 @@ typedef struct
   void *payload;
   GTask *task;
 } LoaderData;
+
+typedef struct
+{
+  GTask *task;
+  SoupSession *session;
+  ImgurImage *image;
+} ImageLoadingData;
 
 static void
 gallery_call_finished_cb (GObject      *source_object,
@@ -308,6 +316,64 @@ ws_image_loader_load_album_finish (WsImageLoader  *loader,
   return g_task_propagate_pointer (G_TASK (result), error);
 }
 
+static void
+soup_message_cb (SoupSession *session,
+                 SoupMessage *message,
+                 gpointer     user_data)
+{
+  ImageLoadingData *data = user_data;
+  GTask *task = data->task;
+  GCancellable *cancellable = g_task_get_cancellable (task);
+  ImgurImage *image = data->image;
+  GBytes *response;
+  GInputStream *in_stream;
+  GdkPixbuf *pixbuf;
+  GError *error = NULL;
+  GdkPaintable *paintable;
+
+  g_object_get (message, "response-body-data", &response, NULL);
+  in_stream = g_memory_input_stream_new_from_bytes (response);
+
+  pixbuf = gdk_pixbuf_new_from_stream (in_stream, NULL, &error);
+
+  if (cancellable != NULL && g_cancellable_is_cancelled (cancellable))
+    {
+      g_task_return_pointer (task, NULL, NULL);
+      return;
+    }
+
+  if (error)
+    {
+      g_message ("%s: %s", __FUNCTION__, error->message);
+
+      g_task_return_error (task, error);
+
+      g_input_stream_close (in_stream, NULL, NULL);
+      g_object_unref (in_stream);
+      g_bytes_unref (response);
+      return;
+    }
+
+  paintable = GDK_PAINTABLE (gdk_texture_new_for_pixbuf (pixbuf));
+  g_set_object (&image->paintable, paintable);
+
+  if (cancellable != NULL && g_cancellable_is_cancelled (cancellable))
+    {
+      g_task_return_pointer (task, NULL, NULL);
+      return;
+    }
+
+  g_input_stream_close (in_stream, NULL, NULL);
+  g_object_unref (in_stream);
+
+  g_object_unref (pixbuf);
+  g_bytes_unref (response);
+
+  g_task_return_pointer (task, image, NULL);
+
+  g_free (data);
+}
+
 void
 ws_image_loader_load_image_async (WsImageLoader       *loader,
                                   ImgurImage          *image,
@@ -316,10 +382,10 @@ ws_image_loader_load_image_async (WsImageLoader       *loader,
                                   gpointer             user_data)
 {
   GTask *task;
+  ImageLoadingData *data;
+  SoupMessage *message;
 
   task = g_task_new (loader, cancellable, callback, user_data);
-
-  g_message ("%s: %s", __FUNCTION__, image->link);
 
   /* 'Animated' images, aka videos, are a special case and will be streamed
    * when showing them */
@@ -334,67 +400,17 @@ ws_image_loader_load_image_async (WsImageLoader       *loader,
       return;
     }
 
-  g_message ("%s: ID: %s, Title: %s, Link: %s",
-             __FUNCTION__, image->id, image->title, image->link);
+  data = g_malloc0 (sizeof (ImageLoadingData));
+  data->task = task;
+  data->session = soup_session_new ();
+  data->image = image;
 
-  {
-    GInputStream *in_stream;
-    GdkPixbufAnimation *animation;
-    GdkPixbuf *pixbuf;
-    SoupMessage *message = soup_message_new ("GET", image->link);
-    SoupSession *session;
-    GError *error = NULL;
-    GBytes *response;
+  message = soup_message_new ("GET", image->link);
 
-    session = soup_session_new ();
-
-    g_message ("Loading %s", image->link);
-
-    soup_session_send_message (session, message);
-
-    g_object_get (message, "response-body-data", &response, NULL);
-
-    in_stream = g_memory_input_stream_new_from_bytes (response);
-
-    animation = gdk_pixbuf_animation_new_from_stream (in_stream, NULL, &error);
-
-    if (cancellable != NULL && g_cancellable_is_cancelled (cancellable))
-      {
-        g_task_return_pointer (task, NULL, NULL);
-        return;
-      }
-
-    if (error)
-      {
-        g_message ("%s: %s", __FUNCTION__, error->message);
-
-        g_task_return_error (task, error);
-
-        g_input_stream_close (in_stream, NULL, NULL);
-        g_object_unref (in_stream);
-        g_bytes_unref (response);
-        return;
-      }
-
-    pixbuf = gdk_pixbuf_animation_get_static_image (animation);
-    image->paintable = GDK_PAINTABLE (gdk_texture_new_for_pixbuf (pixbuf));
-
-    if (cancellable != NULL && g_cancellable_is_cancelled (cancellable))
-      {
-        g_task_return_pointer (task, NULL, NULL);
-        return;
-      }
-
-    g_input_stream_close (in_stream, NULL, NULL);
-    g_object_unref (in_stream);
-
-    g_object_unref (animation);
-    g_object_unref (message);
-    g_object_unref (session);
-    g_bytes_unref (response);
-
-    g_task_return_pointer (task, image, NULL);
-  }
+  soup_session_queue_message (data->session,
+                              message,
+                              soup_message_cb,
+                              data);
 }
 
 ImgurImage *
