@@ -254,11 +254,27 @@ ws_album_view_size_allocate (GtkWidget *widget,
 }
 
 static void
+ws_album_view_snapshot (GtkWidget   *widget,
+                        GtkSnapshot *snapshot)
+{
+  const int width = gtk_widget_get_width (widget);
+  const int height = gtk_widget_get_height (widget);
+
+  gtk_snapshot_push_clip (snapshot,
+                          &GRAPHENE_RECT_INIT (0, 0, width, height));
+
+  GTK_WIDGET_CLASS (ws_album_view_parent_class)->snapshot (widget, snapshot);
+  gtk_snapshot_pop (snapshot);
+}
+
+static void
 ws_album_view_finalize (GObject *object)
 {
   WsAlbumView *self = WS_ALBUM_VIEW (object);
 
   g_free (self->widgets);
+
+  G_OBJECT_CLASS (ws_album_view_parent_class)->finalize (object);
 }
 
 static void
@@ -279,8 +295,9 @@ ws_album_view_class_init (WsAlbumViewClass *class)
   object_class->get_property = ws_album_view_get_property;
   object_class->finalize     = ws_album_view_finalize;
 
-  widget_class->size_allocate = ws_album_view_size_allocate;
   widget_class->measure = ws_album_view_measure;
+  widget_class->size_allocate = ws_album_view_size_allocate;
+  widget_class->snapshot = ws_album_view_snapshot;
 
   g_object_class_override_property (object_class, PROP_HADJUSTMENT, "hadjustment");
   g_object_class_override_property (object_class, PROP_VADJUSTMENT, "vadjustment");
