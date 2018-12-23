@@ -305,32 +305,34 @@ static GActionEntry win_entries[] = {
 };
 
 void
-ws_main_window_init (WsMainWindow *win)
+ws_main_window_init (WsMainWindow *self)
 {
   Waster *app = (Waster *)g_application_get_default ();
 
-  gtk_widget_init_template (GTK_WIDGET (win));
+  gtk_widget_init_template (GTK_WIDGET (self));
 
-  g_action_map_add_action_entries (G_ACTION_MAP (win),
+  g_action_map_add_action_entries (G_ACTION_MAP (self),
                                    win_entries, G_N_ELEMENTS (win_entries),
-                                   win);
+                                   self);
 
-  win->loader = ws_image_loader_new ();
+  self->loader = ws_image_loader_new ();
 
   if (waster_is_proxy_inited (app))
     {
-      gtk_stack_set_visible_child_name (GTK_STACK (win->main_stack), "spinner");
-      gtk_spinner_start (GTK_SPINNER (win->spinner));
-      ws_image_loader_load_gallery_async (win->loader,
+      gtk_stack_set_visible_child_name (GTK_STACK (self->main_stack), "spinner");
+      gtk_spinner_start (GTK_SPINNER (self->spinner));
+      ws_image_loader_load_gallery_async (self->loader,
                                           &IMGUR_GALLERIES[0],
                                           NULL,
                                           gallery_loaded_cb,
-                                          win);
+                                          self);
     }
   else
     {
-      gtk_stack_set_visible_child_name (GTK_STACK (win->main_stack), "initial_state");
+      gtk_stack_set_visible_child_name (GTK_STACK (self->main_stack), "initial_state");
     }
+
+  gtk_window_set_default_size (GTK_WINDOW (self), 1024, 768);
 }
 
 void
