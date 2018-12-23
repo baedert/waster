@@ -58,7 +58,6 @@
         <child>
           <object class="GtkStack" id="album_stack">
             <property name="transition_type">slide-left-right</property>
-            <property name="transition-duration">10000</property>
             <property name="hexpand">1</property>
 
 
