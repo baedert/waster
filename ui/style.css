@@ -1,6 +1,19 @@
 
 album {
-  background-color: teal;
+  /* TODO: Radial gradients are fucking slow in gtk+ */
+  /*background:radial-gradient(*/
+    /*farthest-side at bottom left,*/
+    /*rgba(255, 0, 255, 0.5),*/
+    /*transparent*/
+  /*),*/
+  /*radial-gradient(*/
+    /*farthest-corner at bottom right,*/
+    /*rgba(255, 50, 50, 0.5),*/
+    /*transparent 400px*/
+  /*);*/
+
+  /*background: linear-gradient(to right, #30e8bf, #ff8235);*/
+  background: linear-gradient(to right, #43c6ac, #f8ffae);
 }
 
 media {
