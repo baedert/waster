@@ -43,8 +43,7 @@ typedef struct _WsMainWindow WsMainWindow;
 G_DEFINE_TYPE (WsMainWindow, ws_main_window, GTK_TYPE_APPLICATION_WINDOW);
 
 static void
-refresh_cancellable (WsMainWindow  *self,
-                     GCancellable **c)
+refresh_cancellable (GCancellable **c)
 {
   g_assert (c);
 
@@ -64,21 +63,27 @@ ws_main_window_show_image (WsMainWindow *self,
   const ImgurAlbum *album;
   int i;
 
-  self->current_image_index = 0;
+  self->current_image_index = image_index;
 
   album = &self->gallery->albums[self->current_album_index];
 
+  g_message ("%s: %d", __FUNCTION__, image_index);
   /* Load the current image */
-  refresh_cancellable (self, &self->image_cancellables[0]);
+  refresh_cancellable (&self->image_cancellables[0]);
   ws_image_loader_load_image_async (self->loader,
                                     &album->images[image_index],
                                     self->image_cancellables[0],
                                     image_loaded_cb,
                                     self);
 
-  for (i = 0; i < LOOKAHEAD; i ++)
+  for (i = 0; i < MIN (LOOKAHEAD, album->n_images - image_index - 1); i ++)
     {
-
+      refresh_cancellable (&self->image_cancellables[1 + i]);
+      ws_image_loader_load_image_async (self->loader,
+                                        &album->images[image_index + 1 + i],
+                                        self->image_cancellables[1 + i],
+                                        image_loaded_cb,
+                                        self);
     }
 
 }
@@ -328,17 +333,7 @@ go_down_cb (GSimpleAction *action,
 
   if (self->current_image_index < album->n_images - 1)
     {
-      ImgurImage *image;
-
-      self->current_image_index ++;
-      image = &album->images[self->current_image_index];
-
-      ws_image_loader_load_image_async (self->loader,
-                                        &album->images[self->current_image_index],
-                                        NULL,
-                                        image_loaded_cb,
-                                        self);
-
+      ws_main_window_show_image (self, self->current_image_index + 1);
       ws_album_view_scroll_to_next (WS_ALBUM_VIEW (self->album_view));
     }
 }

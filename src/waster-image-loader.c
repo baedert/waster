@@ -427,6 +427,8 @@ ws_image_loader_load_image_async (WsImageLoader       *loader,
       return;
     }
 
+  g_message ("%s: %s", __FUNCTION__, image->link);
+
   data = g_malloc0 (sizeof (ImageLoadingData));
   data->task = task;
   data->session = soup_session_new ();
