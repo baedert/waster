@@ -15,7 +15,6 @@
 
             <child>
               <object class="GtkImage">
-                <property name="visible">true</property>
                 <property name="icon-name">go-previous-symbolic</property>
               </object>
             </child>
@@ -35,18 +34,19 @@
 
     <child>
       <object class="GtkStack" id="main_stack">
-        <property name="visible">true</property>
         <property name="transition_type">crossfade</property>
 
         <child>
           <object class="WsInitialState" id="initial_state">
-            <property name="visible">true</property>
           </object>
+          <packing>
+            <property name="name">initial_state</property>
+          </packing>
+
         </child>
 
         <child>
           <object class="GtkSpinner" id="spinner">
-            <property name="visible">true</property>
             <property name="halign">center</property>
             <property name="valign">center</property>
           </object>
@@ -57,17 +57,15 @@
 
         <child>
           <object class="GtkStack" id="image_stack">
-            <property name="visible">true</property>
             <property name="transition_type">slide-left-right</property>
-            <property name="hexpand">true</property>
+            <property name="hexpand">1</property>
 
 
 
             <child>
               <object class="WsImpostor" id="impostor">
-                <property name="visible">true</property>
-                <property name="hexpand">true</property>
-                <property name="vexpand">true</property>
+                <property name="hexpand">1</property>
+                <property name="vexpand">1</property>
                 <property name="halign">fill</property>
                 <property name="valign">fill</property>
               </object>
@@ -80,12 +78,10 @@
 
             <child>
               <object class="GtkScrolledWindow">
-                <property name="visible">true</property>
-                <property name="hexpand">true</property>
+                <property name="hexpand">1</property>
                 <child>
                   <object class="WsAlbumView" id="album_view">
-                    <property name="visible">true</property>
-                    <property name="hexpand">true</property>
+                    <property name="hexpand">1</property>
 
                   </object>
                 </child>
