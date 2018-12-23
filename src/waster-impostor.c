@@ -11,7 +11,6 @@ ws_impostor_clone (WsImpostor *self,
   g_clear_object (&self->paintable);
 
   self->paintable = gtk_widget_paintable_new (widget);
-  /*self->paintable = gdk_paintable_get_current_image (self->paintable);*/
 }
 
 static void

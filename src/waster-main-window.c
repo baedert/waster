@@ -25,7 +25,7 @@ struct _WsMainWindow
 
   WsImageLoader *loader;
 
-  guint current_album_index;
+  int current_album_index;
   int current_image_index;
 };
 
@@ -98,15 +98,18 @@ show_next_album (WsMainWindow *window)
   ImgurAlbum *album;
   char buff[4096];
 
-  gtk_stack_set_transition_type (GTK_STACK (window->album_stack),
-                                 GTK_STACK_TRANSITION_TYPE_NONE);
+  if (window->current_album_index >= 0)
+    {
+      gtk_stack_set_transition_type (GTK_STACK (window->album_stack),
+                                     GTK_STACK_TRANSITION_TYPE_NONE);
 
-  ws_impostor_clone (WS_IMPOSTOR (window->impostor),
-                     gtk_stack_get_visible_child (GTK_STACK (window->album_stack)));
+      ws_impostor_clone (WS_IMPOSTOR (window->impostor),
+                         gtk_stack_get_visible_child (GTK_STACK (window->album_stack)));
 
-  gtk_stack_set_visible_child_name (GTK_STACK (window->album_stack), "impostor");
-  gtk_stack_set_transition_type (GTK_STACK (window->album_stack),
-                                 GTK_STACK_TRANSITION_TYPE_SLIDE_LEFT_RIGHT);
+      gtk_stack_set_visible_child_name (GTK_STACK (window->album_stack), "impostor");
+      gtk_stack_set_transition_type (GTK_STACK (window->album_stack),
+                                     GTK_STACK_TRANSITION_TYPE_SLIDE_LEFT_RIGHT);
+    }
 
   ws_album_view_clear (WS_ALBUM_VIEW (window->album_view));
 
@@ -222,8 +225,22 @@ gallery_loaded_cb (GObject      *source_object,
   /* -1 so show_next_album will incrase it to 0 and load that */
   window->current_album_index = -1;
   window->current_image_index = -1;
-  gtk_stack_set_visible_child_name (GTK_STACK (window->main_stack), "image");
-  gtk_stack_set_visible_child_name (GTK_STACK (window->album_stack), "album");
+
+  {
+    GtkStackTransitionType old = gtk_stack_get_transition_type (GTK_STACK (window->main_stack));
+
+    gtk_stack_set_transition_type (GTK_STACK (window->main_stack), GTK_STACK_TRANSITION_TYPE_NONE);
+    gtk_stack_set_visible_child_name (GTK_STACK (window->main_stack), "image");
+    gtk_stack_set_transition_type (GTK_STACK (window->main_stack), old);
+  }
+
+  {
+    GtkStackTransitionType old = gtk_stack_get_transition_type (GTK_STACK (window->album_stack));
+
+    gtk_stack_set_transition_type (GTK_STACK (window->album_stack), GTK_STACK_TRANSITION_TYPE_NONE);
+    gtk_stack_set_visible_child_name (GTK_STACK (window->album_stack), "album");
+    gtk_stack_set_transition_type (GTK_STACK (window->album_stack), old);
+  }
 
   /* TODO: This leaks the gallery and everything it contains! */
   g_free (window->gallery);
