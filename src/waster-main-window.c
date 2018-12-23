@@ -25,8 +25,6 @@ struct _WsMainWindow
 
   WsImageLoader *loader;
 
-  GCancellable* cancellables[LOOKAHEAD + 1];
-
   guint current_album_index;
   int current_image_index;
 };
@@ -110,14 +108,6 @@ show_next_album (WsMainWindow *window)
 
   ws_album_view_clear (WS_ALBUM_VIEW (window->album_view));
 
-  if (G_IS_CANCELLABLE (window->cancellables[0]))
-    {
-      g_cancellable_cancel (window->cancellables[0]);
-      g_object_unref (window->cancellables[0]);
-    }
-
-  window->cancellables[0] = g_cancellable_new ();
-
   window->current_album_index ++;
   window->current_image_index = 0;
 
@@ -139,7 +129,7 @@ show_next_album (WsMainWindow *window)
 
   ws_image_loader_load_image_async (loader,
                                     &album->images[window->current_image_index],
-                                    window->cancellables[0],
+                                    NULL,
                                     image_loaded_cb,
                                     window);
 
@@ -280,7 +270,7 @@ go_down_cb (GSimpleAction *action,
 
       ws_image_loader_load_image_async (self->loader,
                                         &album->images[self->current_image_index],
-                                        self->cancellables[0],
+                                        NULL,
                                         image_loaded_cb,
                                         self);
 
@@ -326,7 +316,6 @@ ws_main_window_init (WsMainWindow *win)
                                    win);
 
   win->loader = ws_image_loader_new ();
-  win->cancellables[0] = win->cancellables[1] = NULL;
 
   if (waster_is_proxy_inited (app))
     {
