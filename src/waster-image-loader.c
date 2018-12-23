@@ -268,7 +268,9 @@ album_call_finished_cb (GObject      *source_object,
     {
       ImgurImage *image = &album->images[i];
 
-      imgur_image_init_from_json (image, json_array_get_object_element (data_array, i));
+      if (!image->loaded)
+        imgur_image_init_from_json (image, json_array_get_object_element (data_array, i));
+
       image->index = i;
     }
 
