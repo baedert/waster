@@ -148,33 +148,33 @@ show_next_album (WsMainWindow *window)
 }
 
 static void
-show_prev_album (WsMainWindow *window)
+show_prev_album (WsMainWindow *self)
 {
   ImgurAlbum *album;
-  WsImageLoader *loader = window->loader;
+  WsImageLoader *loader = self->loader;
   char buff[4096];
 
-  if (window->current_album_index == 0)
+  if (self->current_album_index == 0)
     return;
 
-  window->current_album_index --;
-  window->current_image_index = 0;
+  self->current_album_index --;
+  self->current_image_index = 0;
 
-  album = &window->gallery->albums[window->current_album_index];
-  ws_album_view_reserve_space (WS_ALBUM_VIEW (window->album_view),
+  album = &self->gallery->albums[self->current_album_index];
+  ws_album_view_reserve_space (WS_ALBUM_VIEW (self->album_view),
                                album);
 
   ws_image_loader_load_image_async (loader,
                                     &album->images[0],
                                     NULL,
                                     image_loaded_cb,
-                                    window);
+                                    self);
 
-  if (window->current_album_index == 0)
-    gtk_widget_set_sensitive (window->prev_button, FALSE);
+  if (self->current_album_index == 0)
+    gtk_widget_set_sensitive (self->prev_button, FALSE);
 
   g_snprintf (buff, sizeof (buff), "%s (%d)", album->title, album->n_images);
-  gtk_window_set_title (GTK_WINDOW (window), buff);
+  gtk_window_set_title (GTK_WINDOW (self), buff);
 }
 
 void
