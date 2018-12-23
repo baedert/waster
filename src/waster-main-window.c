@@ -9,6 +9,12 @@
 
 #define LOOKAHEAD 1
 
+
+static void image_loaded_cb (GObject      *source_object,
+                             GAsyncResult *result,
+                             gpointer      user_data);
+
+
 struct _WsMainWindow
 {
   GtkApplicationWindow parent_instance;
@@ -27,11 +33,55 @@ struct _WsMainWindow
 
   int current_album_index;
   int current_image_index;
+
+  GCancellable *image_cancellables[1 + LOOKAHEAD];
+
 };
 
 typedef struct _WsMainWindow WsMainWindow;
 
 G_DEFINE_TYPE (WsMainWindow, ws_main_window, GTK_TYPE_APPLICATION_WINDOW);
+
+static void
+refresh_cancellable (WsMainWindow  *self,
+                     GCancellable **c)
+{
+  g_assert (c);
+
+  if (*c != NULL)
+    {
+      g_cancellable_cancel (*c);
+      g_object_unref (*c);
+    }
+
+  *c = g_cancellable_new ();
+}
+
+static void
+ws_main_window_show_image (WsMainWindow *self,
+                           int           image_index)
+{
+  const ImgurAlbum *album;
+  int i;
+
+  self->current_image_index = 0;
+
+  album = &self->gallery->albums[self->current_album_index];
+
+  /* Load the current image */
+  refresh_cancellable (self, &self->image_cancellables[0]);
+  ws_image_loader_load_image_async (self->loader,
+                                    &album->images[image_index],
+                                    self->image_cancellables[0],
+                                    image_loaded_cb,
+                                    self);
+
+  for (i = 0; i < LOOKAHEAD; i ++)
+    {
+
+    }
+
+}
 
 static void
 album_loaded_cb (GObject      *source_object,
@@ -132,12 +182,6 @@ show_next_album (WsMainWindow *window)
                                     album_loaded_cb,
                                     window);
 
-  ws_image_loader_load_image_async (loader,
-                                    &album->images[window->current_image_index],
-                                    NULL,
-                                    image_loaded_cb,
-                                    window);
-
   g_snprintf (buff, sizeof (buff), "%s (%d)", album->title, album->n_images);
   gtk_window_set_title (GTK_WINDOW (window), buff);
 
@@ -145,6 +189,8 @@ show_next_album (WsMainWindow *window)
     gtk_widget_set_sensitive (window->prev_button, TRUE);
 
   gtk_stack_set_visible_child_name (GTK_STACK (window->album_stack), "album");
+
+  ws_main_window_show_image (window, 0);
 }
 
 static void
