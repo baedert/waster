@@ -17,7 +17,7 @@ struct _WsMainWindow
   GtkWidget *prev_button;
   GtkWidget *initial_state;
   GtkWidget *spinner;
-  GtkWidget *image_stack;
+  GtkWidget *album_stack;
   GtkWidget *album_view;
   GtkWidget *impostor;
 
@@ -98,12 +98,14 @@ show_next_album (WsMainWindow *window)
   ImgurAlbum *album;
   char buff[4096];
 
-  gtk_stack_set_transition_type (GTK_STACK (window->image_stack),
+  gtk_stack_set_transition_type (GTK_STACK (window->album_stack),
                                  GTK_STACK_TRANSITION_TYPE_NONE);
+
   ws_impostor_clone (WS_IMPOSTOR (window->impostor),
-                     gtk_stack_get_visible_child (GTK_STACK (window->image_stack)));
-  gtk_stack_set_visible_child_name (GTK_STACK (window->image_stack), "impostor");
-  gtk_stack_set_transition_type (GTK_STACK (window->image_stack),
+                     gtk_stack_get_visible_child (GTK_STACK (window->album_stack)));
+
+  gtk_stack_set_visible_child_name (GTK_STACK (window->album_stack), "impostor");
+  gtk_stack_set_transition_type (GTK_STACK (window->album_stack),
                                  GTK_STACK_TRANSITION_TYPE_SLIDE_LEFT_RIGHT);
 
   ws_album_view_clear (WS_ALBUM_VIEW (window->album_view));
@@ -139,7 +141,7 @@ show_next_album (WsMainWindow *window)
   if (window->current_album_index > 0)
     gtk_widget_set_sensitive (window->prev_button, TRUE);
 
-  gtk_stack_set_visible_child_name (GTK_STACK (window->image_stack), "album");
+  gtk_stack_set_visible_child_name (GTK_STACK (window->album_stack), "album");
 }
 
 static void
@@ -221,7 +223,7 @@ gallery_loaded_cb (GObject      *source_object,
   window->current_album_index = -1;
   window->current_image_index = -1;
   gtk_stack_set_visible_child_name (GTK_STACK (window->main_stack), "image");
-  gtk_stack_set_visible_child_name (GTK_STACK (window->image_stack), "album");
+  gtk_stack_set_visible_child_name (GTK_STACK (window->album_stack), "album");
 
   /* TODO: This leaks the gallery and everything it contains! */
   g_free (window->gallery);
@@ -347,7 +349,7 @@ ws_main_window_class_init (WsMainWindowClass *class)
   gtk_widget_class_bind_template_child (widget_class, WsMainWindow, initial_state);
   gtk_widget_class_bind_template_child (widget_class, WsMainWindow, prev_button);
   gtk_widget_class_bind_template_child (widget_class, WsMainWindow, next_button);
-  gtk_widget_class_bind_template_child (widget_class, WsMainWindow, image_stack);
+  gtk_widget_class_bind_template_child (widget_class, WsMainWindow, album_stack);
   gtk_widget_class_bind_template_child (widget_class, WsMainWindow, spinner);
   gtk_widget_class_bind_template_child (widget_class, WsMainWindow, album_view);
   gtk_widget_class_bind_template_child (widget_class, WsMainWindow, impostor);

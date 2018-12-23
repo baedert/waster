@@ -56,7 +56,7 @@
         </child>
 
         <child>
-          <object class="GtkStack" id="image_stack">
+          <object class="GtkStack" id="album_stack">
             <property name="transition_type">slide-left-right</property>
             <property name="hexpand">1</property>
 
