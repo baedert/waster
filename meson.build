@@ -1,8 +1,12 @@
 project('waster', 'c')
+
+
+cc = meson.get_compiler('c')
 gtkdep = dependency('gtk+-4.0')
 soupdep = dependency('libsoup-2.4')
 jsondep = dependency('json-glib-1.0')
 gstdep  = dependency('gstreamer-video-1.0')
+libm = cc.find_library('m')
 
 
 gnome = import('gnome')
@@ -63,7 +67,8 @@ executable(
   dependencies: [gtkdep,
                  soupdep,
                  jsondep,
-                 gstdep],
+                 gstdep,
+                 libm],
   include_directories: [
     include_directories('src/'),
     include_directories('src/rest/')

@@ -307,8 +307,10 @@ ws_album_view_size_allocate (GtkWidget *widget,
 
       gtk_widget_size_allocate (self->widgets[i],
                                 &(GtkAllocation) {
-                                  (width - final_width) / 2, y + (height - final_height) / 2,
-                                  final_width, final_height
+                                  ceil ((width - final_width) / 2.0),
+                                  ceil (y + (height - final_height) / 2.0),
+                                  final_width,
+                                  final_height
                                 }, -1);
 
       y += height;
