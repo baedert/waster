@@ -148,6 +148,11 @@ waster_maybe_refresh_token (Waster      *waster,
 
   const char *result = (const char *) response_body->data;
 
+  if (!result)
+    {
+      g_error ("Could not refresh token");
+    }
+
   JsonParser *parser = json_parser_new ();
   json_parser_load_from_data (parser, result, -1, &error);
 
