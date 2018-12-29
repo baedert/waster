@@ -321,6 +321,8 @@ static void
 ws_album_view_snapshot (GtkWidget   *widget,
                         GtkSnapshot *snapshot)
 {
+  WsAlbumView *self = WS_ALBUM_VIEW (widget);
+  GtkAdjustment *adjustment = self->vadjustment;
   const int width = gtk_widget_get_width (widget);
   const int height = gtk_widget_get_height (widget);
 
@@ -329,6 +331,20 @@ ws_album_view_snapshot (GtkWidget   *widget,
 
   GTK_WIDGET_CLASS (ws_album_view_parent_class)->snapshot (widget, snapshot);
   gtk_snapshot_pop (snapshot);
+
+  if (gtk_adjustment_get_value (adjustment) <
+      gtk_adjustment_get_upper (adjustment) - gtk_adjustment_get_page_size (adjustment))
+    {
+      const int twidth = gdk_texture_get_width (self->arrow_down_texture);
+      const int theight = gdk_texture_get_height (self->arrow_down_texture);
+
+      gtk_snapshot_append_texture (snapshot, self->arrow_down_texture,
+                                   &GRAPHENE_RECT_INIT (
+                                     width - twidth,
+                                     height - theight,
+                                     twidth, theight
+                                   ));
+    }
 }
 
 static void
@@ -351,6 +367,8 @@ ws_album_view_init (WsAlbumView *self)
   gtk_widget_set_has_surface (GTK_WIDGET (self), FALSE);
   self->widgets = NULL;
   self->n_widgets = 0;
+
+  self->arrow_down_texture = gdk_texture_new_from_resource ("/org/baedert/waster/data/arrow-down.png");
 
   cb_animation_init (&self->scroll_animation, GTK_WIDGET (self), scroll_animate_func);
 }

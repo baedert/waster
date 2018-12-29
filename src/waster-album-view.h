@@ -23,6 +23,8 @@ struct _WsAlbumView
   double scroll_start_value;
   double scroll_end_value;
   CbAnimation scroll_animation;
+
+  GdkTexture *arrow_down_texture;
 };
 
 typedef struct _WsAlbumView WsAlbumView;
