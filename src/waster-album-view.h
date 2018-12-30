@@ -24,7 +24,9 @@ struct _WsAlbumView
   double scroll_end_value;
   CbAnimation scroll_animation;
 
+  float arrow_down_scale;
   GdkTexture *arrow_down_texture;
+  CbAnimation arrow_activate_animation;
 };
 
 typedef struct _WsAlbumView WsAlbumView;

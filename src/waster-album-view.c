@@ -4,6 +4,8 @@
 #include "waster-media.h"
 
 
+#define ARROW_SCALE (0.5)
+
 
 G_DEFINE_TYPE_WITH_CODE (WsAlbumView, ws_album_view, GTK_TYPE_WIDGET,
                          G_IMPLEMENT_INTERFACE (GTK_TYPE_SCROLLABLE, NULL));
@@ -124,6 +126,16 @@ scroll_animate_func (CbAnimation *animation,
   gtk_widget_queue_allocate (GTK_WIDGET (self));
 }
 
+static void
+arrow_activate_func (CbAnimation *animation,
+                     double       t,
+                     gpointer     user_data)
+{
+  WsAlbumView *self = (WsAlbumView *)animation->owner;
+
+  self->arrow_down_scale = 1.0 + ((sinf (t * G_PI)) * ARROW_SCALE);
+}
+
 void
 ws_album_view_scroll_to_next (WsAlbumView *self)
 {
@@ -142,6 +154,7 @@ ws_album_view_scroll_to_next (WsAlbumView *self)
     cb_animation_stop (&self->scroll_animation);
 
   cb_animation_start (&self->scroll_animation, NULL);
+  cb_animation_start (&self->arrow_activate_animation, NULL);
 
   /* Kick off */
   gtk_widget_queue_allocate (GTK_WIDGET (self));
@@ -337,13 +350,27 @@ ws_album_view_snapshot (GtkWidget   *widget,
     {
       const int twidth = gdk_texture_get_width (self->arrow_down_texture);
       const int theight = gdk_texture_get_height (self->arrow_down_texture);
+      /*const float offset = (s - 1) * twidth;*/
+      graphene_matrix_t m;
 
+      graphene_matrix_init_identity (&m);
+      graphene_matrix_translate (&m, &GRAPHENE_POINT3D_INIT (- twidth / 2.0f, - theight / 2.0, 0));
+      graphene_matrix_scale (&m, self->arrow_down_scale, self->arrow_down_scale, 1);
+      graphene_matrix_translate (&m, &GRAPHENE_POINT3D_INIT (twidth / 2.0f, theight / 2.0, 0));
+
+      /*g_message ("%s: %f, %f", __FUNCTION__, self->arrow_down_scale, offset);*/
+
+      gtk_snapshot_offset (snapshot, width - twidth, height - theight);//- offset, - offset);
+      gtk_snapshot_push_transform (snapshot, &m);
+      gtk_snapshot_push_opacity (snapshot, 0.7);
       gtk_snapshot_append_texture (snapshot, self->arrow_down_texture,
                                    &GRAPHENE_RECT_INIT (
-                                     width - twidth,
-                                     height - theight,
+                                     0, 0,
                                      twidth, theight
                                    ));
+      gtk_snapshot_pop (snapshot);
+      gtk_snapshot_pop (snapshot);
+      gtk_snapshot_offset (snapshot, - width - twidth, - height - theight);//- offset, - offset);
     }
 }
 
@@ -369,8 +396,10 @@ ws_album_view_init (WsAlbumView *self)
   self->n_widgets = 0;
 
   self->arrow_down_texture = gdk_texture_new_from_resource ("/org/baedert/waster/data/arrow-down.png");
+  self->arrow_down_scale = 1.0;
 
   cb_animation_init (&self->scroll_animation, GTK_WIDGET (self), scroll_animate_func);
+  cb_animation_init (&self->arrow_activate_animation, GTK_WIDGET (self), arrow_activate_func);
 }
 
 static void
