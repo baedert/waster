@@ -350,18 +350,16 @@ ws_album_view_snapshot (GtkWidget   *widget,
     {
       const int twidth = gdk_texture_get_width (self->arrow_down_texture);
       const int theight = gdk_texture_get_height (self->arrow_down_texture);
-      /*const float offset = (s - 1) * twidth;*/
-      graphene_matrix_t m;
+      GtkTransform *transform;
 
-      graphene_matrix_init_identity (&m);
-      graphene_matrix_translate (&m, &GRAPHENE_POINT3D_INIT (- twidth / 2.0f, - theight / 2.0, 0));
-      graphene_matrix_scale (&m, self->arrow_down_scale, self->arrow_down_scale, 1);
-      graphene_matrix_translate (&m, &GRAPHENE_POINT3D_INIT (twidth / 2.0f, theight / 2.0, 0));
+      transform = gtk_transform_translate (NULL, &GRAPHENE_POINT_INIT (twidth / 2.0f, theight / 2.0));
+      transform = gtk_transform_scale (transform, self->arrow_down_scale, self->arrow_down_scale);
+      transform = gtk_transform_translate (transform, &GRAPHENE_POINT_INIT (- twidth / 2.0f, - theight / 2.0));
 
-      /*g_message ("%s: %f, %f", __FUNCTION__, self->arrow_down_scale, offset);*/
-
-      gtk_snapshot_offset (snapshot, width - twidth, height - theight);//- offset, - offset);
-      gtk_snapshot_push_transform (snapshot, &m);
+      gtk_snapshot_save (snapshot);
+      gtk_snapshot_translate (snapshot,
+                              &(graphene_point_t) {width - twidth, height - theight});//- offset, - offset);
+      gtk_snapshot_transform (snapshot, transform);
       gtk_snapshot_push_opacity (snapshot, 0.7);
       gtk_snapshot_append_texture (snapshot, self->arrow_down_texture,
                                    &GRAPHENE_RECT_INIT (
@@ -369,8 +367,9 @@ ws_album_view_snapshot (GtkWidget   *widget,
                                      twidth, theight
                                    ));
       gtk_snapshot_pop (snapshot);
-      gtk_snapshot_pop (snapshot);
-      gtk_snapshot_offset (snapshot, - width - twidth, - height - theight);//- offset, - offset);
+      gtk_snapshot_restore (snapshot);
+
+      gtk_transform_unref (transform);
     }
 }
 

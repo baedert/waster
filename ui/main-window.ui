@@ -1,18 +1,13 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <template class="WsMainWindow" parent="GtkApplicationWindow">
-
-
     <child type="titlebar">
       <object class="GtkHeaderBar">
         <property name="show-title-buttons">1</property>
         <property name="title">Waster</property>
-
         <child>
           <object class="GtkButton" id="prev_button">
-            <property name="sensitive">false</property>
-            <signal name="clicked" handler="prev_button_clicked_cb" />
-
+            <property name="sensitive">0</property>
+            <signal name="clicked" handler="prev_button_clicked_cb"/>
             <child>
               <object class="GtkImage">
                 <property name="icon-name">go-previous-symbolic</property>
@@ -20,83 +15,74 @@
             </child>
           </object>
         </child>
-
         <child>
           <object class="GtkButton" id="next_button">
             <property name="action-name">win.go-next</property>
             <property name="icon-name">go-next-symbolic</property>
-            <signal name="clicked" handler="next_button_clicked_cb" />
+            <signal name="clicked" handler="next_button_clicked_cb"/>
           </object>
         </child>
-
       </object>
     </child>
-
     <child>
       <object class="GtkStack" id="main_stack">
         <property name="transition_type">crossfade</property>
-
         <child>
-          <object class="WsInitialState" id="initial_state">
-          </object>
-          <packing>
-            <property name="name">initial_state</property>
-          </packing>
-
+          <object class="WsInitialState" id="initial_state"/>
         </child>
 
         <child>
-          <object class="GtkSpinner" id="spinner">
-            <property name="halign">center</property>
-            <property name="valign">center</property>
-          </object>
-          <packing>
+          <object class="GtkStackPage">
             <property name="name">spinner</property>
-          </packing>
-        </child>
-
-        <child>
-          <object class="GtkStack" id="album_stack">
-            <property name="transition_type">slide-left-right</property>
-            <property name="hexpand">1</property>
-
-
-
-            <child>
-              <object class="WsImpostor" id="impostor">
-                <property name="hexpand">1</property>
-                <property name="vexpand">1</property>
-                <property name="halign">fill</property>
-                <property name="valign">fill</property>
+            <property name="child">
+              <object class="GtkSpinner" id="spinner">
+                <property name="halign">center</property>
+                <property name="valign">center</property>
               </object>
-              <packing>
-                <property name="name">impostor</property>
-              </packing>
-            </child>
-
-
-
-            <child>
-              <object class="GtkScrolledWindow">
+            </property>
+          </object>
+        </child>
+        <child>
+          <object class="GtkStackPage">
+            <property name="name">image</property>
+            <property name="child">
+              <object class="GtkStack" id="album_stack">
+                <property name="transition_type">slide-left-right</property>
                 <property name="hexpand">1</property>
-                <child>
-                  <object class="WsAlbumView" id="album_view">
-                    <property name="hexpand">1</property>
 
+                <child>
+                  <object class="GtkStackPage">
+                    <property name="name">impostor</property>
+                    <property name="child">
+                      <object class="WsImpostor" id="impostor">
+                        <property name="hexpand">1</property>
+                        <property name="vexpand">1</property>
+                        <property name="halign">fill</property>
+                        <property name="valign">fill</property>
+                      </object>
+                    </property>
+                  </object>
+                </child>
+
+                <child>
+                  <object class="GtkStackPage">
+                    <property name="name">album</property>
+                    <property name="child">
+                      <object class="GtkScrolledWindow">
+                        <property name="hexpand">1</property>
+                        <child>
+                          <object class="WsAlbumView" id="album_view">
+                            <property name="hexpand">1</property>
+                          </object>
+                        </child>
+                      </object>
+                    </property>
                   </object>
                 </child>
               </object>
-              <packing>
-                <property name="name">album</property>
-              </packing>
-            </child>
-
+            </property>
           </object>
-          <packing>
-            <property name="name">image</property>
-          </packing>
         </child>
-
       </object>
     </child>
   </template>
