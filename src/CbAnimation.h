@@ -36,6 +36,8 @@ struct _CbAnimation
   guint reverse : 1;
   double start_percentage;
 
+  double progress; /* Only access this if running! */
+
   guint64 start_time;
   CbAnimateFunc func;
   gpointer user_data;

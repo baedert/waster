@@ -1,5 +1,6 @@
 <interface>
   <template class="WsMainWindow" parent="GtkApplicationWindow">
+    <!--<property name="decorated">0</property>-->
     <child type="titlebar">
       <object class="GtkHeaderBar">
         <property name="show-title-buttons">1</property>
@@ -49,6 +50,9 @@
               <object class="GtkStack" id="album_stack">
                 <property name="transition_type">slide-left-right</property>
                 <property name="hexpand">1</property>
+                <style>
+                  <class name="album-stack" />
+                </style>
 
                 <child>
                   <object class="GtkStackPage">

@@ -318,13 +318,44 @@ ws_album_view_size_allocate (GtkWidget *widget,
           final_height = nat_height;
         }
 
-      gtk_widget_size_allocate (self->widgets[i],
-                                &(GtkAllocation) {
-                                  ceil ((width - final_width) / 2.0),
-                                  ceil (y + (height - final_height) / 2.0),
-                                  final_width,
-                                  final_height
-                                }, -1);
+      if (1 || cb_animation_is_running (&self->scroll_animation))
+        {
+          /*const float deg = (1 - self->scroll_animation.progress) * (-90.0f);*/
+          const float deg = 45;//(1 - self->scroll_animation.progress) * (-90.0f);
+          GtkTransform *t = NULL;
+
+          t = gtk_transform_translate (t,
+                                       &(graphene_point_t) {
+                                       (width) / 2.0f,
+                                       y + (height) / 2.0f,
+                                       });
+
+          t = gtk_transform_rotate (t, deg);
+
+          t = gtk_transform_translate (t,
+                                       &(graphene_point_t) {
+                                       - final_width / 2.0f,
+                                       - final_height / 2.0f,
+                                       });
+
+          gtk_widget_allocate (self->widgets[i],
+                               final_width,
+                               final_height,
+                               -1,
+                               t);
+
+          gtk_transform_unref (t);
+        }
+      else
+        {
+          gtk_widget_size_allocate (self->widgets[i],
+                                    &(GtkAllocation) {
+                                      ceil ((width - final_width) / 2.0),
+                                      ceil (y + (height - final_height) / 2.0),
+                                      final_width,
+                                      final_height
+                                    }, -1);
+        }
 
       y += height;
     }

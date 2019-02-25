@@ -1,5 +1,5 @@
 
-album {
+.album-stack {
   /* TODO: Radial gradients are fucking slow in gtk+ */
   /*background:radial-gradient(*/
     /*farthest-side at bottom left,*/

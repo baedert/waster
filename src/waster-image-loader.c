@@ -419,10 +419,10 @@ ws_image_loader_load_image_async (WsImageLoader       *loader,
     {
       image->paintable = GDK_PAINTABLE (gtk_media_file_new_for_filename ("/home/baedert/Peek 2017-09-26 07-23.webm"));
       image->loaded = TRUE;
-      gtk_media_stream_set_loop (GTK_MEDIA_STREAM (image->paintable), TRUE);
-      gtk_media_stream_play (GTK_MEDIA_STREAM (image->paintable));
+      /*gtk_media_stream_set_loop (GTK_MEDIA_STREAM (image->paintable), TRUE);*/
+      /*gtk_media_stream_play (GTK_MEDIA_STREAM (image->paintable));*/
 
-      g_task_return_pointer (task, image, NULL);
+      /*g_task_return_pointer (task, image, NULL);*/
       g_object_unref (task);
       return;
     }

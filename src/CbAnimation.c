@@ -66,6 +66,7 @@ cb_animation_tick_cb (GtkWidget     *widget,
   if (self->reverse)
     progress = 1.0 - progress;
 
+  self->progress = progress;
   self->func (self, progress, self->user_data);
 
   if (t >= 1.0)

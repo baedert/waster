@@ -61,28 +61,6 @@ ws_image_view_size_allocate (GtkWidget *widget,
 
 }
 
-
-/* TODO: Clipping the contents of a widget to the rounded border box
- *       should be supported by GTK+ directly. */
-#define RADIUS 6
-static void
-ws_image_view_snapshot (GtkWidget   *widget,
-                        GtkSnapshot *snapshot)
-{
-  const int width = gtk_widget_get_width (widget);
-  const int height = gtk_widget_get_height (widget);
-  const graphene_size_t corner = { RADIUS, RADIUS };
-  GskRoundedRect clip;
-
-  gsk_rounded_rect_init (&clip,
-                         &GRAPHENE_RECT_INIT (0, 0, width, height),
-                         &corner, &corner, &corner, &corner);
-
-  gtk_snapshot_push_rounded_clip (snapshot, &clip);
-  GTK_WIDGET_CLASS (ws_image_view_parent_class)->snapshot (widget, snapshot);
-  gtk_snapshot_pop (snapshot);
-}
-
 static void
 ws_image_view_finalize (GObject *object)
 {
@@ -103,7 +81,6 @@ ws_image_view_class_init (WsImageViewClass *klass)
 
   widget_class->measure = ws_image_view_measure;
   widget_class->size_allocate = ws_image_view_size_allocate;
-  widget_class->snapshot = ws_image_view_snapshot;
   widget_class->get_request_mode = ws_image_view_get_request_mode;
 
   gtk_widget_class_set_css_name (widget_class, "media");
@@ -113,6 +90,7 @@ static void
 ws_image_view_init (WsImageView *self)
 {
   gtk_widget_set_has_surface (GTK_WIDGET (self), FALSE);
+  gtk_widget_set_overflow (GTK_WIDGET (self), GTK_OVERFLOW_HIDDEN);
 
   self->picture = gtk_picture_new ();
   gtk_widget_set_parent (self->picture, GTK_WIDGET (self));
