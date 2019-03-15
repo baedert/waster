@@ -12,12 +12,12 @@
     /*transparent 400px*/
   /*);*/
 
-  /*background: linear-gradient(to right, #30e8bf, #ff8235);*/
   background: linear-gradient(to right, #43c6ac, #f8ffae);
 }
 
 media {
-  box-shadow: 0 14px 28px rgba(0,0,0,0.25), 0 10px 10px rgba(0,0,0,0.22);
+  /*box-shadow: 0 14px 28px rgba(0,0,0,0.25), 0 10px 10px rgba(0,0,0,0.22);*/
+  box-shadow: 0 14px 28px rgba(0,0,0,0.25);
   border: 1px solid grey;
   border-radius: 6px;
   margin: 3em;

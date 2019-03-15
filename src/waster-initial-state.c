@@ -47,7 +47,7 @@ submit_button_clicked_cb (GtkWidget      *source,
                           WsInitialState *initial_state)
 {
   Waster *app = (Waster *) (g_application_get_default ());
-  const gchar *pin = gtk_entry_get_text (GTK_ENTRY (initial_state->pin_entry));
+  const gchar *pin = gtk_editable_get_text (GTK_EDITABLE (initial_state->pin_entry));
 
   waster_maybe_refresh_token (app, pin);
 }

@@ -318,21 +318,21 @@ ws_album_view_size_allocate (GtkWidget *widget,
           final_height = nat_height;
         }
 
-      if (1 || cb_animation_is_running (&self->scroll_animation))
+      if (cb_animation_is_running (&self->scroll_animation))
         {
-          /*const float deg = (1 - self->scroll_animation.progress) * (-90.0f);*/
-          const float deg = 45;//(1 - self->scroll_animation.progress) * (-90.0f);
-          GtkTransform *t = NULL;
+          const float deg = (1 - self->scroll_animation.progress) * (-90.0f);
+          /*const float deg = 45;//(1 - self->scroll_animation.progress) * (-90.0f);*/
+          GskTransform *t = NULL;
 
-          t = gtk_transform_translate (t,
+          t = gsk_transform_translate (t,
                                        &(graphene_point_t) {
                                        (width) / 2.0f,
                                        y + (height) / 2.0f,
                                        });
 
-          t = gtk_transform_rotate (t, deg);
+          t = gsk_transform_rotate (t, deg);
 
-          t = gtk_transform_translate (t,
+          t = gsk_transform_translate (t,
                                        &(graphene_point_t) {
                                        - final_width / 2.0f,
                                        - final_height / 2.0f,
@@ -344,7 +344,7 @@ ws_album_view_size_allocate (GtkWidget *widget,
                                -1,
                                t);
 
-          gtk_transform_unref (t);
+          gsk_transform_unref (t);
         }
       else
         {
@@ -381,11 +381,11 @@ ws_album_view_snapshot (GtkWidget   *widget,
     {
       const int twidth = gdk_texture_get_width (self->arrow_down_texture);
       const int theight = gdk_texture_get_height (self->arrow_down_texture);
-      GtkTransform *transform;
+      GskTransform *transform;
 
-      transform = gtk_transform_translate (NULL, &GRAPHENE_POINT_INIT (twidth / 2.0f, theight / 2.0));
-      transform = gtk_transform_scale (transform, self->arrow_down_scale, self->arrow_down_scale);
-      transform = gtk_transform_translate (transform, &GRAPHENE_POINT_INIT (- twidth / 2.0f, - theight / 2.0));
+      transform = gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (twidth / 2.0f, theight / 2.0));
+      transform = gsk_transform_scale (transform, self->arrow_down_scale, self->arrow_down_scale);
+      transform = gsk_transform_translate (transform, &GRAPHENE_POINT_INIT (- twidth / 2.0f, - theight / 2.0));
 
       gtk_snapshot_save (snapshot);
       gtk_snapshot_translate (snapshot,
@@ -400,7 +400,7 @@ ws_album_view_snapshot (GtkWidget   *widget,
       gtk_snapshot_pop (snapshot);
       gtk_snapshot_restore (snapshot);
 
-      gtk_transform_unref (transform);
+      gsk_transform_unref (transform);
     }
 }
 
