@@ -155,6 +155,8 @@ show_next_album (WsMainWindow *window)
 
   if (window->current_album_index >= 0)
     {
+      GtkStackTransitionType old = gtk_stack_get_transition_type (GTK_STACK (window->album_stack));
+
       gtk_stack_set_transition_type (GTK_STACK (window->album_stack),
                                      GTK_STACK_TRANSITION_TYPE_NONE);
 
@@ -162,8 +164,7 @@ show_next_album (WsMainWindow *window)
                          gtk_stack_get_visible_child (GTK_STACK (window->album_stack)));
 
       gtk_stack_set_visible_child_name (GTK_STACK (window->album_stack), "impostor");
-      gtk_stack_set_transition_type (GTK_STACK (window->album_stack),
-                                     GTK_STACK_TRANSITION_TYPE_SLIDE_LEFT_RIGHT);
+      gtk_stack_set_transition_type (GTK_STACK (window->album_stack), old);
     }
 
   ws_album_view_clear (WS_ALBUM_VIEW (window->album_view));

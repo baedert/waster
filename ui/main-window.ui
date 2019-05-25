@@ -27,7 +27,7 @@
     </child>
     <child>
       <object class="GtkStack" id="main_stack">
-        <property name="transition_type">crossfade</property>
+        <property name="transition-type">crossfade</property>
         <child>
           <object class="WsInitialState" id="initial_state"/>
         </child>
@@ -48,7 +48,7 @@
             <property name="name">image</property>
             <property name="child">
               <object class="GtkStack" id="album_stack">
-                <property name="transition_type">slide-left-right</property>
+                <property name="transition-type">rotate-left-right</property>
                 <property name="hexpand">1</property>
                 <style>
                   <class name="album-stack" />

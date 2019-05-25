@@ -321,21 +321,20 @@ ws_album_view_size_allocate (GtkWidget *widget,
       if (cb_animation_is_running (&self->scroll_animation))
         {
           const float deg = (1 - self->scroll_animation.progress) * (-90.0f);
-          /*const float deg = 45;//(1 - self->scroll_animation.progress) * (-90.0f);*/
           GskTransform *t = NULL;
 
           t = gsk_transform_translate (t,
                                        &(graphene_point_t) {
-                                       (width) / 2.0f,
-                                       y + (height) / 2.0f,
+                                         (width) / 2.0f,
+                                         y + (height) / 2.0f,
                                        });
 
           t = gsk_transform_rotate (t, deg);
 
           t = gsk_transform_translate (t,
                                        &(graphene_point_t) {
-                                       - final_width / 2.0f,
-                                       - final_height / 2.0f,
+                                         - final_width / 2.0f,
+                                         - final_height / 2.0f,
                                        });
 
           gtk_widget_allocate (self->widgets[i],
@@ -370,11 +369,7 @@ ws_album_view_snapshot (GtkWidget   *widget,
   const int width = gtk_widget_get_width (widget);
   const int height = gtk_widget_get_height (widget);
 
-  gtk_snapshot_push_clip (snapshot,
-                          &GRAPHENE_RECT_INIT (0, 0, width, height));
-
   GTK_WIDGET_CLASS (ws_album_view_parent_class)->snapshot (widget, snapshot);
-  gtk_snapshot_pop (snapshot);
 
   if (gtk_adjustment_get_value (adjustment) <
       gtk_adjustment_get_upper (adjustment) - gtk_adjustment_get_page_size (adjustment))
@@ -422,6 +417,7 @@ static void
 ws_album_view_init (WsAlbumView *self)
 {
   gtk_widget_set_has_surface (GTK_WIDGET (self), FALSE);
+  gtk_widget_set_overflow (GTK_WIDGET (self), GTK_OVERFLOW_HIDDEN);
   self->widgets = NULL;
   self->n_widgets = 0;
 
