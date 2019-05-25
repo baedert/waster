@@ -24,43 +24,6 @@ ws_image_view_set_contents (WsImageView  *self,
                              paintable);
 }
 
-static GtkSizeRequestMode
-ws_image_view_get_request_mode (GtkWidget *widget)
-{
-  WsImageView *self = WS_IMAGE_VIEW (widget);
-
-  return gtk_widget_get_request_mode (self->picture);
-}
-
-static void
-ws_image_view_measure (GtkWidget      *widget,
-                       GtkOrientation  orientation,
-                       int             for_size,
-                       int            *minimum,
-                       int            *natural,
-                       int            *minimum_baseline,
-                       int            *natural_baseline)
-{
-  WsImageView *self = WS_IMAGE_VIEW (widget);
-
-  gtk_widget_measure (self->picture, orientation, for_size,
-                      minimum, natural, minimum_baseline, natural_baseline);
-}
-
-static void
-ws_image_view_size_allocate (GtkWidget *widget,
-                             int        width,
-                             int        height,
-                             int        baseline)
-{
-  WsImageView *self = WS_IMAGE_VIEW (widget);
-
-  gtk_widget_size_allocate (self->picture,
-                            &(GtkAllocation) { 0, 0, width, height },
-                            -1);
-
-}
-
 static void
 ws_image_view_finalize (GObject *object)
 {
@@ -79,11 +42,8 @@ ws_image_view_class_init (WsImageViewClass *klass)
 
   object_class->finalize = ws_image_view_finalize;
 
-  widget_class->measure = ws_image_view_measure;
-  widget_class->size_allocate = ws_image_view_size_allocate;
-  widget_class->get_request_mode = ws_image_view_get_request_mode;
-
   gtk_widget_class_set_css_name (widget_class, "media");
+  gtk_widget_class_set_layout_manager_type (widget_class, GTK_TYPE_BIN_LAYOUT);
 }
 
 static void
