@@ -143,7 +143,7 @@ gallery_call_finished_cb (GObject      *source_object,
   if (error)
     {
       g_task_return_error (task, error);
-      return;
+      goto out;
     }
 
   parser = json_parser_new ();
@@ -152,7 +152,7 @@ gallery_call_finished_cb (GObject      *source_object,
   if (error)
     {
       g_task_return_error (task, error);
-      return;
+      goto out;
     }
 
   root = json_node_get_object (json_parser_get_root (parser));
@@ -162,7 +162,7 @@ gallery_call_finished_cb (GObject      *source_object,
     {
       g_critical ("%s: root is not an array.", __FUNCTION__);
       printf ("%s\n", rest_proxy_call_get_payload (call));
-      return;
+      goto out;
     }
 
   data_array = json_object_get_array_member (root, "data");
@@ -186,6 +186,9 @@ gallery_call_finished_cb (GObject      *source_object,
   g_object_unref (call);
 
   g_task_return_pointer (task, gallery, NULL);
+
+out:
+  g_free (data);
 }
 
 void
@@ -425,6 +428,7 @@ ws_image_loader_load_image_async (WsImageLoader       *loader,
     {
       GFile *file = g_file_new_for_uri (image->link);
 
+      g_clear_object (&image->paintable);
       image->paintable = GDK_PAINTABLE (gtk_media_file_new_for_file (file));
       image->loaded = TRUE;
       imgur_album_notify_image_loaded (image->album, image->index);

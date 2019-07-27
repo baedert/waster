@@ -67,7 +67,6 @@ ws_main_window_show_image (WsMainWindow *self,
 
   album = &self->gallery->albums[self->current_album_index];
 
-  /*g_message ("%s: %d", __FUNCTION__, image_index);*/
   /* Load the current image */
   refresh_cancellable (&self->image_cancellables[0]);
   ws_image_loader_load_image_async (self->loader,
@@ -382,10 +381,49 @@ ws_main_window_init (WsMainWindow *self)
   gtk_window_set_default_size (GTK_WINDOW (self), 1024, 768);
 }
 
+static void
+ws_main_window_dispose (GObject *object)
+{
+  WsMainWindow *self = (WsMainWindow *)object;
+  int i;
+
+  for (i = 0; i < G_N_ELEMENTS (self->image_cancellables); i ++)
+    g_clear_object (&self->image_cancellables[i]);
+
+  if (self->gallery)
+    {
+      for (i = 0; i < self->gallery->n_albums; i ++)
+        {
+          ImgurAlbum *album = &self->gallery->albums[i];
+          int k;
+
+          g_clear_pointer (&album->title, g_free);
+
+          for (k = 0; k < album->n_images; k ++)
+            {
+              ImgurImage *image = &album->images[k];
+
+              g_clear_pointer (&image->id, g_free);
+              g_clear_pointer (&image->title, g_free);
+              g_clear_pointer (&image->link, g_free);
+              g_clear_object (&image->paintable);
+            }
+          g_clear_pointer (&album->images, g_free);
+        }
+      g_clear_pointer (&self->gallery->albums, g_free);
+      g_clear_pointer (&self->gallery, g_free);
+    }
+
+  G_OBJECT_CLASS (ws_main_window_parent_class)->dispose (object);
+}
+
 void
 ws_main_window_class_init (WsMainWindowClass *class)
 {
+  GObjectClass *object_class = G_OBJECT_CLASS (class);
   GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (class);
+
+  object_class->dispose = ws_main_window_dispose;
 
   gtk_widget_class_set_template_from_resource (widget_class,
                                                "/org/baedert/waster/ui/main-window.ui");

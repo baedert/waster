@@ -20,7 +20,7 @@
 
 #include <gtk/gtk.h>
 
-#define CB_TRANSITION_DURATION (2000 * 1000)
+#define CB_TRANSITION_DURATION (200 * 1000)
 
 
 typedef struct _CbAnimation CbAnimation;

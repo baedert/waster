@@ -351,6 +351,8 @@ ws_album_view_finalize (GObject *object)
   gtk_widget_unparent (self->image);
   gtk_widget_unparent (self->other_image);
 
+  g_clear_object (&self->arrow_down_texture);
+
   G_OBJECT_CLASS (ws_album_view_parent_class)->finalize (object);
 }
 
