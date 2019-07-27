@@ -5,6 +5,7 @@
 #include <gtk/gtk.h>
 
 
+typedef struct _ImgurAlbum ImgurAlbum;
 
 struct _ImgurImage
 {
@@ -14,6 +15,7 @@ struct _ImgurImage
   int width;
   int height;
   guint index;
+  ImgurAlbum *album;
   GdkPaintable *paintable; /* NULL if not loaded! */
 
   guint is_animated : 1;
@@ -23,8 +25,11 @@ struct _ImgurImage
 typedef struct _ImgurImage ImgurImage;
 
 
+typedef void (*ImgurAlbumImageLoadedFunc) (ImgurAlbum *album,
+                                           ImgurImage *image,
+                                           gpointer    user_data);
 
-typedef struct {
+struct _ImgurAlbum {
   int n_images;
   ImgurImage *images;
 
@@ -33,7 +38,16 @@ typedef struct {
 
   guint loaded : 1;
 
-} ImgurAlbum;
+  ImgurAlbumImageLoadedFunc image_loaded_callback;
+  gpointer image_loaded_user_data;
+};
+
+void imgur_album_set_image_loaded_callback (ImgurAlbum                *self,
+                                            ImgurAlbumImageLoadedFunc  callback,
+                                            gpointer                   user_data);
+void imgur_album_notify_image_loaded       (ImgurAlbum                *self,
+                                            int                        image_index);
+
 
 typedef struct
 {

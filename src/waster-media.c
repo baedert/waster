@@ -49,9 +49,29 @@ ws_image_view_class_init (WsImageViewClass *klass)
 static void
 ws_image_view_init (WsImageView *self)
 {
-  gtk_widget_set_has_surface (GTK_WIDGET (self), FALSE);
   gtk_widget_set_overflow (GTK_WIDGET (self), GTK_OVERFLOW_HIDDEN);
 
   self->picture = gtk_picture_new ();
   gtk_widget_set_parent (self->picture, GTK_WIDGET (self));
+}
+
+void
+ws_image_view_start (WsImageView *self)
+{
+  GdkPaintable *p = gtk_picture_get_paintable (GTK_PICTURE (self->picture));
+
+  if (p && GTK_IS_MEDIA_STREAM (p))
+    gtk_media_stream_play (GTK_MEDIA_STREAM (p));
+}
+
+void
+ws_image_view_stop (WsImageView  *self)
+{
+  GdkPaintable *p = gtk_picture_get_paintable (GTK_PICTURE (self->picture));
+
+  if (p && GTK_IS_MEDIA_STREAM (p))
+    {
+      gtk_media_stream_pause (GTK_MEDIA_STREAM (p));
+      g_message ("STOPPED");
+    }
 }

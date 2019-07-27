@@ -51,6 +51,7 @@ imgur_album_init_from_json (ImgurAlbum *self,
                             JsonObject *album_obj)
 {
   int n_images;
+  int i;
 
   self->title = g_strdup (json_object_get_string_member (album_obj, "title"));
 
@@ -65,6 +66,13 @@ imgur_album_init_from_json (ImgurAlbum *self,
     n_images = 1;
 
   self->n_images = n_images;
+  self->images = g_malloc0 (self->n_images * sizeof (ImgurImage));
+
+  for (i = 0; i < self->n_images; i ++)
+    {
+      self->images[i].album = self;
+      self->images[i].index = i;
+    }
 
   /* Some of these json objects have an "images" array, even if the array only contains
    * one element. Some of them don't have it in that case though. Let's map both of those
@@ -72,17 +80,15 @@ imgur_album_init_from_json (ImgurAlbum *self,
   if (json_object_has_member (album_obj, "images"))
     {
       JsonArray *images_array;
-      int i, p;
+      int p;
 
       images_array = json_object_get_array_member (album_obj, "images");
-      self->images = g_malloc0 (self->n_images * sizeof (ImgurImage));
 
       p = (int) json_array_get_length (images_array);
       for (i = 0; i < p; i ++)
         {
           imgur_image_init_from_json (&self->images[i],
                                       json_array_get_object_element (images_array, i));
-          self->images[i].index = i;
         }
 
       /* If the images array (or the album object itself) already contains all the images
@@ -91,10 +97,8 @@ imgur_album_init_from_json (ImgurAlbum *self,
     }
   else
     {
-      self->images = g_malloc0 (self->n_images * sizeof (ImgurImage));
 
       imgur_image_init_from_json (&self->images[0], album_obj);
-      self->images[0].index = 0;
       self->loaded = TRUE; /* Naturally */
     }
 }
@@ -378,9 +382,11 @@ soup_message_cb (SoupSession *session,
       return;
     }
 
+
   g_clear_object (&image->paintable);
   image->paintable = paintable;
   image->loaded = TRUE;
+  imgur_album_notify_image_loaded (image->album, image->index);
 
   g_input_stream_close (in_stream, NULL, NULL);
   g_object_unref (in_stream);
@@ -421,12 +427,15 @@ ws_image_loader_load_image_async (WsImageLoader       *loader,
 
       image->paintable = GDK_PAINTABLE (gtk_media_file_new_for_file (file));
       image->loaded = TRUE;
+      imgur_album_notify_image_loaded (image->album, image->index);
+
       gtk_media_stream_set_loop (GTK_MEDIA_STREAM (image->paintable), TRUE);
       gtk_media_stream_play (GTK_MEDIA_STREAM (image->paintable));
 
       g_task_return_pointer (task, image, NULL);
       g_object_unref (task);
       g_object_unref (file);
+
       return;
     }
 

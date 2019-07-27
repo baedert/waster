@@ -19,6 +19,8 @@ struct _WsImageView
 G_DECLARE_FINAL_TYPE (WsImageView, ws_image_view, WS, IMAGE_VIEW, GtkWidget);
 
 GtkWidget *ws_image_view_new ();
-void       ws_image_view_set_contents     (WsImageView  *image_view,
+void       ws_image_view_set_contents     (WsImageView  *self,
                                            GdkPaintable *paintable);
+void       ws_image_view_start            (WsImageView  *self);
+void       ws_image_view_stop             (WsImageView  *self);
 #endif

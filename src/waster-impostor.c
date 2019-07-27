@@ -58,5 +58,4 @@ ws_impostor_class_init (WsImpostorClass *class)
 static void
 ws_impostor_init (WsImpostor *impostor)
 {
-  gtk_widget_set_has_surface (GTK_WIDGET (impostor), FALSE);
 }

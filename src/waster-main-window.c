@@ -67,7 +67,7 @@ ws_main_window_show_image (WsMainWindow *self,
 
   album = &self->gallery->albums[self->current_album_index];
 
-  g_message ("%s: %d", __FUNCTION__, image_index);
+  /*g_message ("%s: %d", __FUNCTION__, image_index);*/
   /* Load the current image */
   refresh_cancellable (&self->image_cancellables[0]);
   ws_image_loader_load_image_async (self->loader,
@@ -75,6 +75,9 @@ ws_main_window_show_image (WsMainWindow *self,
                                     self->image_cancellables[0],
                                     image_loaded_cb,
                                     self);
+
+  /* Show first image */
+  ws_album_view_show_image (WS_ALBUM_VIEW (self->album_view), &album->images[image_index]);
 
   for (i = 0; i < MIN (LOOKAHEAD, album->n_images - image_index - 1); i ++)
     {
@@ -125,10 +128,9 @@ image_loaded_cb (GObject      *source_object,
   GError *error = NULL;
   ImgurImage *image;
   WsImageLoader *loader = WS_IMAGE_LOADER (source_object);
-  WsMainWindow  *window = user_data;
+  WsMainWindow *window = user_data;
 
   image = ws_image_loader_load_image_finish (loader, result, &error);
-
 
   if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
     {
@@ -142,8 +144,6 @@ image_loaded_cb (GObject      *source_object,
       g_error_free (error);
       return;
     }
-
-  ws_album_view_show_image (WS_ALBUM_VIEW (window->album_view), image);
 }
 
 static void
@@ -332,11 +332,9 @@ go_down_cb (GSimpleAction *action,
 
   album = &self->gallery->albums[self->current_album_index];
 
-  if (self->current_image_index < album->n_images - 1)
-    {
-      ws_main_window_show_image (self, self->current_image_index + 1);
-      ws_album_view_scroll_to_next (WS_ALBUM_VIEW (self->album_view));
-    }
+  ws_album_view_scroll_to_next (WS_ALBUM_VIEW (self->album_view));
+
+  ws_main_window_show_image (self, WS_ALBUM_VIEW (self->album_view)->cur_image_index);
 }
 
 static void
@@ -349,12 +347,7 @@ go_up_cb (GSimpleAction *action,
 
   album = &self->gallery->albums[self->current_album_index];
 
-  if (self->current_image_index > 0)
-    {
-      self->current_image_index --;
-
-      ws_album_view_scroll_to_prev (WS_ALBUM_VIEW (self->album_view));
-    }
+  ws_album_view_scroll_to_prev (WS_ALBUM_VIEW (self->album_view));
 }
 
 

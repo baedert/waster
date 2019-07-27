@@ -8,17 +8,16 @@
 
 struct _WsAlbumView
 {
-  GtkBox parent_instance;
-
-  GtkAdjustment *hadjustment;
-  GtkAdjustment *vadjustment;
+  GtkWidget parent_instance;
 
   ImgurAlbum *album;
 
+  int n_images;
+  int cur_image_index;
   ImgurImage *cur_image;
 
-  int n_widgets;
-  GtkWidget **widgets;
+  GtkWidget *image;
+  GtkWidget *other_image;
 
   double scroll_start_value;
   double scroll_end_value;
