@@ -37,6 +37,8 @@ ws_album_view_clear (WsAlbumView *self)
 
   self->cur_image = NULL;
   self->cur_image_index = 0;
+  ws_image_view_set_contents (WS_IMAGE_VIEW (self->image), NULL);
+  ws_image_view_set_contents (WS_IMAGE_VIEW (self->other_image), NULL);
 }
 
 void
@@ -57,8 +59,15 @@ void
 ws_album_view_show_image (WsAlbumView *self,
                           ImgurImage  *image)
 {
+  GdkPaintable *cur;
+
   g_assert (image->paintable);
   g_assert (image->index >= 0);
+
+  cur = ws_image_view_get_contents (WS_IMAGE_VIEW (self->image));
+
+  g_message ("Cur: %p %s", cur, cur ? G_OBJECT_TYPE_NAME (cur) : "NULL");
+  g_message ("New: %p %s", image->paintable, G_OBJECT_TYPE_NAME (image->paintable));
 
   ws_image_view_set_contents (WS_IMAGE_VIEW (self->image),
                               image->paintable);

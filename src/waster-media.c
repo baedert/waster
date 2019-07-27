@@ -24,6 +24,12 @@ ws_image_view_set_contents (WsImageView  *self,
                              paintable);
 }
 
+GdkPaintable *
+ws_image_view_get_contents (WsImageView *self)
+{
+  return gtk_picture_get_paintable (GTK_PICTURE (self->picture));
+}
+
 static void
 ws_image_view_finalize (GObject *object)
 {

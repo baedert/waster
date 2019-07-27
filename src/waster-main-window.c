@@ -96,7 +96,6 @@ album_loaded_cb (GObject      *source_object,
                  GAsyncResult *result,
                  gpointer      user_data)
 {
-  WsMainWindow *window = user_data;
   GError *error = NULL;
   ImgurAlbum *album;
   WsImageLoader *loader = WS_IMAGE_LOADER (source_object);
@@ -115,9 +114,6 @@ album_loaded_cb (GObject      *source_object,
       g_error_free (error);
       return;
     }
-
-  ws_album_view_reserve_space (WS_ALBUM_VIEW (window->album_view),
-                               album);
 }
 
 static void
@@ -128,7 +124,6 @@ image_loaded_cb (GObject      *source_object,
   GError *error = NULL;
   ImgurImage *image;
   WsImageLoader *loader = WS_IMAGE_LOADER (source_object);
-  WsMainWindow *window = user_data;
 
   image = ws_image_loader_load_image_finish (loader, result, &error);
 
@@ -166,8 +161,6 @@ show_next_album (WsMainWindow *window)
       gtk_stack_set_visible_child_name (GTK_STACK (window->album_stack), "impostor");
       gtk_stack_set_transition_type (GTK_STACK (window->album_stack), old);
     }
-
-  ws_album_view_clear (WS_ALBUM_VIEW (window->album_view));
 
   window->current_album_index ++;
   window->current_image_index = 0;
