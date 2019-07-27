@@ -20,9 +20,6 @@ image_loaded_cb (ImgurAlbum *album,
 {
   WsAlbumView *self = user_data;
 
-  /*g_message ("##################################################################");*/
-  g_message ("%s: %d, %d", __FUNCTION__, image->index, self->cur_image_index);
-
   if (image->index == self->cur_image_index)
     {
       ws_album_view_show_image (self, image);
@@ -59,15 +56,8 @@ void
 ws_album_view_show_image (WsAlbumView *self,
                           ImgurImage  *image)
 {
-  GdkPaintable *cur;
-
   g_assert (image->paintable);
   g_assert (image->index >= 0);
-
-  cur = ws_image_view_get_contents (WS_IMAGE_VIEW (self->image));
-
-  g_message ("Cur: %p %s", cur, cur ? G_OBJECT_TYPE_NAME (cur) : "NULL");
-  g_message ("New: %p %s", image->paintable, G_OBJECT_TYPE_NAME (image->paintable));
 
   ws_image_view_set_contents (WS_IMAGE_VIEW (self->image),
                               image->paintable);
@@ -98,9 +88,20 @@ ws_album_view_scroll_to_next (WsAlbumView *self)
 {
   if (self->cur_image_index < self->n_images - 1)
     {
+      GdkPaintable *cur;
       self->cur_image_index ++;
-      g_message ("%s: Image now: %d", __FUNCTION__, self->cur_image_index);
+
+      cur = ws_image_view_get_contents (WS_IMAGE_VIEW (self->image));
+      ws_image_view_set_contents (WS_IMAGE_VIEW (self->other_image), cur);
+
       ws_album_view_show_image (self, &self->album->images[self->cur_image_index]);
+
+      if (cb_animation_is_running (&self->scroll_animation))
+        cb_animation_stop (&self->scroll_animation);
+
+      cb_animation_start (&self->scroll_animation, NULL);
+      cb_animation_start (&self->arrow_activate_animation, NULL);
+
       gtk_widget_queue_allocate (GTK_WIDGET (self));
     }
 }
@@ -112,7 +113,6 @@ ws_album_view_scroll_to_prev (WsAlbumView *self)
   if (self->cur_image_index > 0)
     {
       self->cur_image_index --;
-      g_message ("%s: Image now: %d", __FUNCTION__, self->cur_image_index);
       ws_album_view_show_image (self, &self->album->images[self->cur_image_index]);
       gtk_widget_queue_allocate (GTK_WIDGET (self));
     }
@@ -159,92 +159,145 @@ ws_album_view_measure (GtkWidget      *widget,
 }
 
 static void
+get_image_size (GtkWidget *widget,
+                int        viewport_width,
+                int        viewport_height,
+                int       *out_width,
+                int       *out_height)
+{
+  int nat_width, nat_height;
+  int final_width, final_height;
+
+  gtk_widget_measure (widget, GTK_ORIENTATION_HORIZONTAL, -1,
+                      NULL, &nat_width, NULL, NULL);
+
+  gtk_widget_measure (widget, GTK_ORIENTATION_VERTICAL, -1,
+                      NULL, &nat_height, NULL, NULL);
+
+  if (nat_width > viewport_width)
+    {
+      final_width = viewport_width; /* Force into parent allocation */
+
+      /* Re-negotiate natural height */
+      gtk_widget_measure (widget, GTK_ORIENTATION_VERTICAL, final_width,
+                          NULL, &nat_height, NULL, NULL);
+    }
+  else
+    {
+      final_width = nat_width;
+    }
+
+  /* Same vertically */
+  if (nat_height > viewport_height)
+    {
+      final_height = viewport_height;
+      /* Re-negotiate natural height */
+      gtk_widget_measure (widget, GTK_ORIENTATION_HORIZONTAL, final_height,
+                          NULL, &nat_width, NULL, NULL);
+      final_width = nat_width;
+    }
+  else
+    {
+      final_height = nat_height;
+    }
+
+  *out_width = final_width;
+  *out_height = final_height;
+}
+
+GskTransform *
+get_image_transform (int           image_width,
+                     int           image_height,
+                     int           viewport_width,
+                     int           viewport_height,
+                     double        animation_progress,
+                     GskTransform *start)
+{
+  const float deg = (1 - animation_progress) * (- 90.0f);
+  GskTransform *t = start;
+
+  t = gsk_transform_translate (t,
+                               &(graphene_point_t) {
+                                 viewport_width / 2.0f,
+                                 viewport_height / 2.0f,
+                               });
+
+  t = gsk_transform_rotate (t, deg);
+
+  t = gsk_transform_translate (t,
+                               &(graphene_point_t) {
+                                 - image_width / 2.0f,
+                                 - image_height / 2.0f,
+                               });
+
+  return t;
+}
+
+static void
 ws_album_view_size_allocate (GtkWidget *widget,
                              int        width,
                              int        height,
                              int        baseline)
 {
   WsAlbumView *self= WS_ALBUM_VIEW (widget);
-  const int y = 0;
+  int final_width = -1;
+  int final_height = -1;
 
-  /*for (i = 0; i < self->n_images; i ++)*/
-    /*{*/
-      GtkWidget *image = self->image;
-      int nat_width, nat_height;
-      int final_width = -1;
-      int final_height = -1;
+  get_image_size (self->image, width, height, &final_width, &final_height);
 
-      gtk_widget_measure (image, GTK_ORIENTATION_HORIZONTAL, -1,
-                          NULL, &nat_width, NULL, NULL);
+  if (cb_animation_is_running (&self->scroll_animation))
+    {
+      const double animation_progress = self->scroll_animation.progress;
+      GskTransform *t = NULL;
+      int other_width, other_height;
 
-      gtk_widget_measure (image, GTK_ORIENTATION_VERTICAL, -1,
-                          NULL, &nat_height, NULL, NULL);
+      t = gsk_transform_translate (t,
+                                   &(graphene_point_t) {
+                                     0,
+                                     height * (1 - animation_progress)
+                                   });
 
-      if (nat_width > width)
-        {
-          final_width = width; /* Force into parent allocation */
-
-          /* Re-negotiate natural height */
-          gtk_widget_measure (image, GTK_ORIENTATION_VERTICAL, final_width,
-                              NULL, &nat_height, NULL, NULL);
-        }
-      else
-        {
-          final_width = nat_width;
-        }
-
-      /* Same vertically */
-      if (nat_height > height)
-        {
-          final_height = height;
-          /* Re-negotiate natural height */
-          gtk_widget_measure (image, GTK_ORIENTATION_HORIZONTAL, final_height,
-                              NULL, &nat_width, NULL, NULL);
-          final_width = nat_width;
-        }
-      else
-        {
-          final_height = nat_height;
-        }
-
-      if (0 && cb_animation_is_running (&self->scroll_animation))
-        {
-          const float deg = (1 - self->scroll_animation.progress) * (-90.0f);
-          GskTransform *t = NULL;
-
-          t = gsk_transform_translate (t,
-                                       &(graphene_point_t) {
-                                         (width) / 2.0f,
-                                         y + (height) / 2.0f,
-                                       });
-
-          t = gsk_transform_rotate (t, deg);
-
-          t = gsk_transform_translate (t,
-                                       &(graphene_point_t) {
-                                         - final_width / 2.0f,
-                                         - final_height / 2.0f,
-                                       });
-
-          gtk_widget_allocate (image,
-                               final_width,
-                               final_height,
-                               -1,
+      t = get_image_transform (final_width, final_height,
+                               width, height,
+                               animation_progress,
                                t);
-        }
-      else
-        {
-          gtk_widget_size_allocate (image,
-                                    &(GtkAllocation) {
-                                      ceil ((width - final_width) / 2.0),
-                                      ceil ((height - final_height) / 2.0),
-                                      final_width,
-                                      final_height
-                                    }, -1);
-        }
+      gtk_widget_allocate (self->image,
+                           final_width,
+                           final_height,
+                           -1,
+                           t);
+      t = NULL;
 
-      /*y += height;*/
-    /*}*/
+      /* Same for the other image */
+      get_image_size (self->other_image, width, height, &other_width, &other_height);
+
+      t = gsk_transform_translate (t,
+                                   &(graphene_point_t) {
+                                     0,
+                                     - height * animation_progress
+                                   });
+
+      t = get_image_transform (other_width, other_height,
+                               width, height,
+                               1 - animation_progress,
+                               t);
+      gtk_widget_allocate (self->other_image,
+                           other_width,
+                           other_height,
+                           -1,
+                           t);
+    }
+  else
+    {
+      gtk_widget_size_allocate (self->image,
+                                &(GtkAllocation) {
+                                  ceil ((width - final_width) / 2.0),
+                                  ceil ((height - final_height) / 2.0),
+                                  final_width,
+                                  final_height
+                                }, -1);
+    }
+
 }
 
 static void
@@ -257,9 +310,10 @@ ws_album_view_snapshot (GtkWidget   *widget,
 
   if (self->n_images > 0)
     {
-      GtkWidget *image = self->image;
+      gtk_widget_snapshot_child (widget, self->image, snapshot);
 
-      gtk_widget_snapshot_child (widget, image, snapshot);
+      if (cb_animation_is_running (&self->scroll_animation))
+        gtk_widget_snapshot_child (widget, self->other_image, snapshot);
     }
 
   if (self->cur_image_index < self->n_images - 1)
