@@ -20,6 +20,8 @@ void
 ws_image_view_set_contents (WsImageView  *self,
                             GdkPaintable *paintable)
 {
+  ws_image_view_stop (self);
+
   gtk_picture_set_paintable (GTK_PICTURE (self->picture),
                              paintable);
 }
@@ -67,7 +69,10 @@ ws_image_view_start (WsImageView *self)
   GdkPaintable *p = gtk_picture_get_paintable (GTK_PICTURE (self->picture));
 
   if (p && GTK_IS_MEDIA_STREAM (p))
-    gtk_media_stream_play (GTK_MEDIA_STREAM (p));
+    {
+      gtk_media_stream_set_loop (GTK_MEDIA_STREAM (p), TRUE);
+      gtk_media_stream_play (GTK_MEDIA_STREAM (p));
+    }
 }
 
 void
@@ -78,6 +83,5 @@ ws_image_view_stop (WsImageView  *self)
   if (p && GTK_IS_MEDIA_STREAM (p))
     {
       gtk_media_stream_pause (GTK_MEDIA_STREAM (p));
-      g_message ("STOPPED");
     }
 }

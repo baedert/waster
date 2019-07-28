@@ -34,6 +34,7 @@ ws_album_view_clear (WsAlbumView *self)
 
   self->cur_image = NULL;
   self->cur_image_index = 0;
+
   ws_image_view_set_contents (WS_IMAGE_VIEW (self->image), NULL);
   ws_image_view_set_contents (WS_IMAGE_VIEW (self->other_image), NULL);
 }
@@ -59,8 +60,12 @@ ws_album_view_show_image (WsAlbumView *self,
   g_assert (image->paintable);
   g_assert (image->index >= 0);
 
+  ws_image_view_stop (WS_IMAGE_VIEW (self->image));
+
   ws_image_view_set_contents (WS_IMAGE_VIEW (self->image),
                               image->paintable);
+
+  ws_image_view_start (WS_IMAGE_VIEW (self->image));
 }
 
 static void

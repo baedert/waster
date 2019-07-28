@@ -433,9 +433,6 @@ ws_image_loader_load_image_async (WsImageLoader       *loader,
       image->loaded = TRUE;
       imgur_album_notify_image_loaded (image->album, image->index);
 
-      gtk_media_stream_set_loop (GTK_MEDIA_STREAM (image->paintable), TRUE);
-      gtk_media_stream_play (GTK_MEDIA_STREAM (image->paintable));
-
       g_task_return_pointer (task, image, NULL);
       g_object_unref (task);
       g_object_unref (file);
