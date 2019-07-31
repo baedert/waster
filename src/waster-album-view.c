@@ -40,17 +40,24 @@ ws_album_view_clear (WsAlbumView *self)
 }
 
 void
-ws_album_view_reserve_space (WsAlbumView *self,
-                             ImgurAlbum  *album)
+ws_album_view_set_album (WsAlbumView *self,
+                         ImgurAlbum  *album)
 {
-  g_return_if_fail (WS_IS_ALBUM_VIEW (self));
+  GdkPaintable *cur;
 
+  g_return_if_fail (WS_IS_ALBUM_VIEW (self));
+  g_return_if_fail (album != NULL);
+
+  cur = ws_image_view_get_contents (WS_IMAGE_VIEW (self->image));
   ws_album_view_clear (self);
+  ws_image_view_set_contents (WS_IMAGE_VIEW (self->other_image), cur);
 
   self->album = album;
   self->n_images = album->n_images;
 
   imgur_album_set_image_loaded_callback (album, image_loaded_cb, self);
+
+  cb_animation_start (&self->album_animation, NULL);
 }
 
 void
@@ -66,6 +73,17 @@ ws_album_view_show_image (WsAlbumView *self,
                               image->paintable);
 
   ws_image_view_start (WS_IMAGE_VIEW (self->image));
+}
+
+
+static void
+album_animate_func (CbAnimation *animation,
+                    double       t,
+                    gpointer     user_data)
+{
+  WsAlbumView *self = (WsAlbumView *)animation->owner;
+
+  gtk_widget_queue_allocate (GTK_WIDGET (self));
 }
 
 static void
@@ -252,19 +270,19 @@ ws_album_view_size_allocate (GtkWidget *widget,
 
   if (cb_animation_is_running (&self->scroll_animation))
     {
-      const double animation_progress = self->scroll_animation.progress;
+      const double progress = self->scroll_animation.progress;
       GskTransform *t = NULL;
       int other_width, other_height;
 
       t = gsk_transform_translate (t,
                                    &(graphene_point_t) {
                                      0,
-                                     height * (1 - animation_progress)
+                                     height * (1 - progress)
                                    });
 
       t = get_image_transform (final_width, final_height,
                                width, height,
-                               animation_progress,
+                               progress,
                                t);
       gtk_widget_allocate (self->image,
                            final_width,
@@ -279,18 +297,41 @@ ws_album_view_size_allocate (GtkWidget *widget,
       t = gsk_transform_translate (t,
                                    &(graphene_point_t) {
                                      0,
-                                     - height * animation_progress
+                                     - height * progress
                                    });
 
       t = get_image_transform (other_width, other_height,
                                width, height,
-                               1 - animation_progress,
+                               1 - progress,
                                t);
       gtk_widget_allocate (self->other_image,
                            other_width,
                            other_height,
                            -1,
                            t);
+    }
+  else if (cb_animation_is_running (&self->album_animation))
+    {
+      const double progress = self->album_animation.progress;
+      GskTransform *t = NULL;
+
+
+      t = gsk_transform_translate (t,
+                                   &(graphene_point_t) {
+                                     ceil ((width - final_width) / 2.0) + (width * (1 - progress)),
+                                     ceil ((height - final_height) / 2.0)
+                                   });
+      gtk_widget_allocate (self->image, final_width, final_height, -1, t);
+      t = NULL;
+
+      get_image_size (self->other_image, width, height, &final_width, &final_height);
+
+      t = gsk_transform_translate (t,
+                                   &(graphene_point_t) {
+                                     ceil ((width - final_width) / 2.0) - (width * progress),
+                                     ceil ((height - final_height) / 2.0),
+                                   });
+      gtk_widget_allocate (self->other_image, final_width, final_height, -1, t);
     }
   else
     {
@@ -317,7 +358,8 @@ ws_album_view_snapshot (GtkWidget   *widget,
     {
       gtk_widget_snapshot_child (widget, self->image, snapshot);
 
-      if (cb_animation_is_running (&self->scroll_animation))
+      if (cb_animation_is_running (&self->scroll_animation) ||
+          cb_animation_is_running (&self->album_animation))
         gtk_widget_snapshot_child (widget, self->other_image, snapshot);
     }
 
@@ -333,7 +375,7 @@ ws_album_view_snapshot (GtkWidget   *widget,
 
       gtk_snapshot_save (snapshot);
       gtk_snapshot_translate (snapshot,
-                              &(graphene_point_t) {width - twidth, height - theight});//- offset, - offset);
+                              &(graphene_point_t) {width - twidth, height - theight});
       gtk_snapshot_transform (snapshot, transform);
       gtk_snapshot_push_opacity (snapshot, 0.7);
       gtk_snapshot_append_texture (snapshot, self->arrow_down_texture,
@@ -376,6 +418,7 @@ ws_album_view_init (WsAlbumView *self)
   self->arrow_down_texture = gdk_texture_new_from_resource ("/org/baedert/waster/data/arrow-down.png");
   self->arrow_down_scale = 1.0;
 
+  cb_animation_init (&self->album_animation, GTK_WIDGET (self), album_animate_func);
   cb_animation_init (&self->scroll_animation, GTK_WIDGET (self), scroll_animate_func);
   cb_animation_init (&self->arrow_activate_animation, GTK_WIDGET (self), arrow_activate_func);
 }

@@ -147,20 +147,6 @@ show_next_album (WsMainWindow *window)
   ImgurAlbum *album;
   char buff[4096];
 
-  if (window->current_album_index >= 0)
-    {
-      GtkStackTransitionType old = gtk_stack_get_transition_type (GTK_STACK (window->album_stack));
-
-      gtk_stack_set_transition_type (GTK_STACK (window->album_stack),
-                                     GTK_STACK_TRANSITION_TYPE_NONE);
-
-      ws_impostor_clone (WS_IMPOSTOR (window->impostor),
-                         gtk_stack_get_visible_child (GTK_STACK (window->album_stack)));
-
-      gtk_stack_set_visible_child_name (GTK_STACK (window->album_stack), "impostor");
-      gtk_stack_set_transition_type (GTK_STACK (window->album_stack), old);
-    }
-
   window->current_album_index ++;
   window->current_image_index = 0;
 
@@ -171,8 +157,7 @@ show_next_album (WsMainWindow *window)
 
   album = &window->gallery->albums[window->current_album_index];
 
-  ws_album_view_reserve_space (WS_ALBUM_VIEW (window->album_view),
-                               album);
+  ws_album_view_set_album (WS_ALBUM_VIEW (window->album_view), album);
 
   ws_image_loader_load_album_async (loader,
                                     album,
@@ -205,8 +190,7 @@ show_prev_album (WsMainWindow *self)
   self->current_image_index = 0;
 
   album = &self->gallery->albums[self->current_album_index];
-  ws_album_view_reserve_space (WS_ALBUM_VIEW (self->album_view),
-                               album);
+  ws_album_view_set_album (WS_ALBUM_VIEW (self->album_view), album);
 
   ws_image_loader_load_image_async (loader,
                                     &album->images[0],

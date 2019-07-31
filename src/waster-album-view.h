@@ -19,9 +19,8 @@ struct _WsAlbumView
   GtkWidget *image;
   GtkWidget *other_image;
 
-  double scroll_start_value;
-  double scroll_end_value;
-  CbAnimation scroll_animation;
+  CbAnimation album_animation;  /* When setting a new album */
+  CbAnimation scroll_animation; /* When scrolling through an album */
 
   float arrow_down_scale;
   GdkTexture *arrow_down_texture;
@@ -34,7 +33,7 @@ typedef struct _WsAlbumView WsAlbumView;
 
 G_DECLARE_FINAL_TYPE (WsAlbumView, ws_album_view, WS, ALBUM_VIEW, GtkWidget);
 
-void     ws_album_view_reserve_space     (WsAlbumView  *self,
+void     ws_album_view_set_album         (WsAlbumView  *self,
                                           ImgurAlbum   *album);
 void     ws_album_view_show_image        (WsAlbumView  *self,
                                           ImgurImage   *image);
