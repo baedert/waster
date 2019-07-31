@@ -21,9 +21,7 @@ image_loaded_cb (ImgurAlbum *album,
   WsAlbumView *self = user_data;
 
   if (image->index == self->cur_image_index)
-    {
-      ws_album_view_show_image (self, image);
-    }
+    ws_album_view_show_image (self, image);
 }
 
 void
@@ -44,10 +42,12 @@ ws_album_view_set_album (WsAlbumView *self,
                          ImgurAlbum  *album)
 {
   GdkPaintable *cur;
+  gboolean use_animation;
 
   g_return_if_fail (WS_IS_ALBUM_VIEW (self));
   g_return_if_fail (album != NULL);
 
+  use_animation = (self->album != NULL);
   cur = ws_image_view_get_contents (WS_IMAGE_VIEW (self->image));
   ws_album_view_clear (self);
   ws_image_view_set_contents (WS_IMAGE_VIEW (self->other_image), cur);
@@ -57,7 +57,8 @@ ws_album_view_set_album (WsAlbumView *self,
 
   imgur_album_set_image_loaded_callback (album, image_loaded_cb, self);
 
-  cb_animation_start (&self->album_animation, NULL);
+  if (use_animation)
+    cb_animation_start (&self->album_animation, NULL);
 }
 
 void

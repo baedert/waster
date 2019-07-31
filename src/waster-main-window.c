@@ -147,6 +147,10 @@ show_next_album (WsMainWindow *window)
   ImgurAlbum *album;
   char buff[4096];
 
+
+  g_critical ("%s %s: Preload the first picture of the next album as well",
+              __FILE__, __FUNCTION__);
+
   window->current_album_index ++;
   window->current_image_index = 0;
 
