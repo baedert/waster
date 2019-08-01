@@ -186,6 +186,7 @@ gallery_call_finished_cb (GObject      *source_object,
   g_object_unref (call);
 
   g_task_return_pointer (task, gallery, NULL);
+  g_object_unref (task);
 
 out:
   g_free (data);
@@ -253,6 +254,7 @@ album_call_finished_cb (GObject      *source_object,
   if (error)
     {
       g_task_return_error (task, error);
+      g_object_unref (task);
       return;
     }
 
@@ -262,6 +264,7 @@ album_call_finished_cb (GObject      *source_object,
   if (error)
     {
       g_task_return_error (task, error);
+      g_object_unref (task);
       return;
     }
 
@@ -287,6 +290,7 @@ album_call_finished_cb (GObject      *source_object,
   album->loaded = TRUE;
 
   g_task_return_pointer (task, album, NULL);
+  g_object_unref (task);
 }
 
 void
@@ -361,6 +365,7 @@ soup_message_cb (SoupSession *session,
   if (cancellable != NULL && g_cancellable_is_cancelled (cancellable))
     {
       g_task_return_pointer (task, NULL, NULL);
+      g_object_unref (task);
       return;
     }
 
@@ -369,6 +374,7 @@ soup_message_cb (SoupSession *session,
       g_message ("%s: %s", __FUNCTION__, error->message);
 
       g_task_return_error (task, error);
+      g_object_unref (task);
 
       g_input_stream_close (in_stream, NULL, NULL);
       g_object_unref (in_stream);
@@ -381,6 +387,7 @@ soup_message_cb (SoupSession *session,
   if (cancellable != NULL && g_cancellable_is_cancelled (cancellable))
     {
       g_task_return_pointer (task, NULL, NULL);
+      g_object_unref (task);
       g_object_unref (paintable);
       return;
     }
@@ -398,6 +405,7 @@ soup_message_cb (SoupSession *session,
   g_bytes_unref (response);
 
   g_task_return_pointer (task, image, NULL);
+  g_object_unref (task);
 
   g_free (data);
 }

@@ -407,6 +407,8 @@ ws_main_window_dispose (GObject *object)
       g_clear_pointer (&self->gallery, g_free);
     }
 
+  g_clear_object (&self->loader);
+
   G_OBJECT_CLASS (ws_main_window_parent_class)->dispose (object);
 }
 
