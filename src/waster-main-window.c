@@ -88,6 +88,15 @@ ws_main_window_show_image (WsMainWindow *self,
                                         self);
     }
 
+  if (self->current_album_index < self->gallery->n_albums - 1)
+    {
+      const ImgurAlbum *next_album = &self->gallery->albums[self->current_album_index + 1];
+      ws_image_loader_load_image_async (self->loader,
+                                        &next_album->images[0],
+                                        NULL,
+                                        image_loaded_cb,
+                                        self);
+    }
 }
 
 static void
@@ -146,10 +155,6 @@ show_next_album (WsMainWindow *window)
   WsImageLoader *loader = window->loader;
   ImgurAlbum *album;
   char buff[4096];
-
-
-  g_critical ("%s %s: Preload the first picture of the next album as well",
-              __FILE__, __FUNCTION__);
 
   window->current_album_index ++;
   window->current_image_index = 0;

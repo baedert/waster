@@ -422,6 +422,8 @@ ws_image_loader_load_image_async (WsImageLoader       *loader,
       return;
     }
 
+  g_message ("%s: Loading %s", __FUNCTION__, image->link);
+
   /* 'Animated' images, aka videos, are a special case and will be streamed
    * when showing them */
   if (image->is_animated)
@@ -439,8 +441,6 @@ ws_image_loader_load_image_async (WsImageLoader       *loader,
 
       return;
     }
-
-  g_message ("%s: %s", __FUNCTION__, image->link);
 
   data = g_malloc0 (sizeof (ImageLoadingData));
   data->task = task;
