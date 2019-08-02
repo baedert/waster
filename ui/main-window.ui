@@ -29,7 +29,12 @@
       <object class="GtkStack" id="main_stack">
         <property name="transition-type">crossfade</property>
         <child>
-          <object class="WsInitialState" id="initial_state"/>
+          <object class="GtkStackPage">
+            <property name="name">initial_state</property>
+            <property name="child">
+              <object class="WsInitialState" id="initial_state"/>
+            </property>
+          </object>
         </child>
 
         <child>
