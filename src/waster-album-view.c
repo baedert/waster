@@ -298,7 +298,7 @@ ws_album_view_size_allocate (GtkWidget *widget,
       t = gsk_transform_translate (t,
                                    &(graphene_point_t) {
                                      0,
-                                     - height * progress
+                                     - width * progress
                                    });
 
       t = get_image_transform (other_width, other_height,
