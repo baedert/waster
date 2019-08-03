@@ -422,6 +422,9 @@ ws_album_view_set_album (WsAlbumView *self,
   self->album = album;
   self->n_images = album->n_images;
 
+  if (album->images[0].loaded)
+    ws_album_view_show_image (self, &album->images[0]);
+
   imgur_album_set_image_loaded_callback (album, image_loaded_cb, self);
 
   if (use_animation)

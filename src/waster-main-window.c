@@ -153,39 +153,41 @@ image_loaded_cb (GObject      *source_object,
 }
 
 static void
-show_next_album (WsMainWindow *window)
+show_next_album (WsMainWindow *self)
 {
-  WsImageLoader *loader = window->loader;
+  WsImageLoader *loader = self->loader;
   ImgurAlbum *album;
   char buff[4096];
 
-  window->current_album_index ++;
-  window->current_image_index = 0;
+  if (!self->gallery)
+    return;
+
+  self->current_album_index ++;
+  self->current_image_index = 0;
 
   /* TODO: Remove this and load the next page instead */
-  if (window->current_album_index >= window->gallery->n_albums)
+  if (self->current_album_index >= self->gallery->n_albums)
     g_error ("New album index too high: %d but only have %d albums",
-             window->current_album_index, window->gallery->n_albums);
+             self->current_album_index, self->gallery->n_albums);
 
-  album = &window->gallery->albums[window->current_album_index];
-
-  ws_album_view_set_album (WS_ALBUM_VIEW (window->album_view), album);
+  album = &self->gallery->albums[self->current_album_index];
+  ws_album_view_set_album (WS_ALBUM_VIEW (self->album_view), album);
 
   ws_image_loader_load_album_async (loader,
                                     album,
                                     NULL,
                                     album_loaded_cb,
-                                    window);
+                                    self);
 
   g_snprintf (buff, sizeof (buff), "%s (%d)", album->title, album->n_images);
-  gtk_window_set_title (GTK_WINDOW (window), buff);
+  gtk_window_set_title (GTK_WINDOW (self), buff);
 
-  if (window->current_album_index > 0)
-    gtk_widget_set_sensitive (window->prev_button, TRUE);
+  if (self->current_album_index > 0)
+    gtk_widget_set_sensitive (self->prev_button, TRUE);
 
-  gtk_stack_set_visible_child_name (GTK_STACK (window->album_stack), "album");
+  gtk_stack_set_visible_child_name (GTK_STACK (self->album_stack), "album");
 
-  ws_main_window_show_image (window, 0);
+  ws_main_window_show_image (self, 0);
 }
 
 static void
@@ -194,6 +196,9 @@ show_prev_album (WsMainWindow *self)
   ImgurAlbum *album;
   WsImageLoader *loader = self->loader;
   char buff[4096];
+
+  if (!self->gallery)
+    return;
 
   if (self->current_album_index == 0)
     return;
@@ -204,10 +209,10 @@ show_prev_album (WsMainWindow *self)
   album = &self->gallery->albums[self->current_album_index];
   ws_album_view_set_album (WS_ALBUM_VIEW (self->album_view), album);
 
-  ws_image_loader_load_image_async (loader,
-                                    &album->images[0],
+  ws_image_loader_load_album_async (loader,
+                                    album,
                                     NULL,
-                                    image_loaded_cb,
+                                    album_loaded_cb,
                                     self);
 
   if (self->current_album_index == 0)
