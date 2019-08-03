@@ -1,5 +1,5 @@
-#ifndef __MEDIA
-#define __MEDIA
+
+#pragma once
 
 #include <gtk/gtk.h>
 #include <cairo/cairo.h>
@@ -24,4 +24,3 @@ void           ws_image_view_set_contents     (WsImageView  *self,
 GdkPaintable * ws_image_view_get_contents     (WsImageView  *self);
 void           ws_image_view_start            (WsImageView  *self);
 void           ws_image_view_stop             (WsImageView  *self);
-#endif
