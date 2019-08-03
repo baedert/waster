@@ -1,6 +1,5 @@
-#ifndef __WASTER_IMP
-#define __WASTER_IMP
 
+#pragma once
 #include <gtk/gtk.h>
 #include <cairo/cairo.h>
 
@@ -20,5 +19,3 @@ typedef struct _WsImpostor WsImpostor;
 G_DECLARE_FINAL_TYPE (WsImpostor, ws_impostor, WS, IMPOSTOR, GtkWidget);
 
 void ws_impostor_clone (WsImpostor *impostor, GtkWidget *widget);
-
-#endif
