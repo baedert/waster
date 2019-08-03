@@ -335,12 +335,38 @@ go_up_cb (GSimpleAction *action,
   ws_album_view_scroll_to_prev (WS_ALBUM_VIEW (self->album_view));
 }
 
+static void
+save_current_cb (GSimpleAction *action,
+                 GVariant      *v,
+                 gpointer       user_data)
+{
+  WsMainWindow *self = user_data;
+  const ImgurAlbum *album;
+  const ImgurImage *image;
+
+  album = &self->gallery->albums[self->current_album_index];
+  image = &album->images[self->current_image_index];
+
+  if (GDK_IS_TEXTURE (image->paintable))
+    {
+      char *filename = g_strdup_printf ("./meme.png");
+
+      gdk_texture_save_to_png (GDK_TEXTURE (image->paintable), filename);
+
+      g_free (filename);
+    }
+  else
+    {
+      g_warning ("Can't save paintable of type %s", G_OBJECT_TYPE_NAME (image->paintable));
+    }
+}
 
 static GActionEntry win_entries[] = {
-  { "go-next", go_next_cb, NULL, NULL, NULL },
-  { "go-prev", go_prev_cb, NULL, NULL, NULL },
-  { "go-down", go_down_cb, NULL, NULL, NULL },
-  { "go-up",   go_up_cb,   NULL, NULL, NULL }
+  { "go-next",      go_next_cb, NULL, NULL, NULL },
+  { "go-prev",      go_prev_cb, NULL, NULL, NULL },
+  { "go-down",      go_down_cb, NULL, NULL, NULL },
+  { "go-up",        go_up_cb,   NULL, NULL, NULL },
+  { "save-current", save_current_cb, NULL, NULL, NULL },
 };
 
 void

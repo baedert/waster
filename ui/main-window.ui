@@ -23,6 +23,13 @@
             <signal name="clicked" handler="next_button_clicked_cb"/>
           </object>
         </child>
+        <child type="end">
+          <object class="GtkButton">
+            <property name="action-name">win.save-current</property>
+            <property name="icon-name">insert-image-symbolic</property>
+            <property name="tooltip-text">Save to ~/Pictures/</property>
+          </object>
+        </child>
       </object>
     </child>
     <child>
