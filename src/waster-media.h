@@ -24,3 +24,5 @@ void           ws_image_view_set_contents     (WsImageView  *self,
 GdkPaintable * ws_image_view_get_contents     (WsImageView  *self);
 void           ws_image_view_start            (WsImageView  *self);
 void           ws_image_view_stop             (WsImageView  *self);
+void           ws_image_view_set_muted        (WsImageView  *self,
+                                               gboolean      muted);

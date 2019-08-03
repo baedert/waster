@@ -85,3 +85,15 @@ ws_image_view_stop (WsImageView  *self)
       gtk_media_stream_pause (GTK_MEDIA_STREAM (p));
     }
 }
+
+void
+ws_image_view_set_muted (WsImageView *self,
+                         gboolean     muted)
+{
+  GdkPaintable *p = gtk_picture_get_paintable (GTK_PICTURE (self->picture));
+
+  if (p && GTK_IS_MEDIA_STREAM (p))
+    {
+      gtk_media_stream_set_muted (GTK_MEDIA_STREAM (p), muted);
+    }
+}
