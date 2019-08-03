@@ -5,6 +5,7 @@
 #include "waster-initial-state.h"
 #include "waster-album-view.h"
 #include "waster-impostor.h"
+#include "waster-notification.h"
 #include "waster.h"
 
 #define LOOKAHEAD 1
@@ -36,6 +37,8 @@ struct _WsMainWindow
 
   GCancellable *image_cancellables[1 + LOOKAHEAD];
 
+  GtkWidget *notification; /* NULL if no notification is being shown */
+  guint notification_id;
 };
 
 typedef struct _WsMainWindow WsMainWindow;
@@ -343,6 +346,7 @@ save_current_cb (GSimpleAction *action,
   WsMainWindow *self = user_data;
   const ImgurAlbum *album;
   const ImgurImage *image;
+  char buff[512];
 
   album = &self->gallery->albums[self->current_album_index];
   image = &album->images[self->current_image_index];
@@ -353,11 +357,14 @@ save_current_cb (GSimpleAction *action,
 
       gdk_texture_save_to_png (GDK_TEXTURE (image->paintable), filename);
 
+      g_snprintf (buff, sizeof (buff), "Saved to '%s'", filename);
+      ws_main_window_show_notification (self, buff);
+
       g_free (filename);
     }
   else
     {
-      g_warning ("Can't save paintable of type %s", G_OBJECT_TYPE_NAME (image->paintable));
+      ws_main_window_show_notification (self, "Can't save videos :(");
     }
 }
 
@@ -398,6 +405,7 @@ ws_main_window_init (WsMainWindow *self)
     }
 
   gtk_window_set_default_size (GTK_WINDOW (self), 1024, 768);
+
 }
 
 static void
@@ -434,8 +442,39 @@ ws_main_window_dispose (GObject *object)
     }
 
   g_clear_object (&self->loader);
+  g_clear_pointer (&self->notification, gtk_widget_unparent);
 
   G_OBJECT_CLASS (ws_main_window_parent_class)->dispose (object);
+}
+
+static void
+ws_main_window_size_allocate (GtkWidget *widget,
+                              int        width,
+                              int        height,
+                              int        baseline)
+{
+  WsMainWindow *self = (WsMainWindow *)widget;
+
+  GTK_WIDGET_CLASS (ws_main_window_parent_class)->size_allocate (widget, width, height, baseline);
+
+  if (self->notification)
+    {
+      #define FUCK_ME 80
+      int w, h;
+
+      gtk_widget_measure (self->notification, GTK_ORIENTATION_HORIZONTAL, -1,
+                          NULL, &w, NULL, NULL);
+      gtk_widget_measure (self->notification, GTK_ORIENTATION_VERTICAL, w,
+                          NULL, &h, NULL, NULL);
+
+      gtk_widget_size_allocate (self->notification,
+                                &(GtkAllocation) {
+                                  (width - w) / 2, FUCK_ME,
+                                  w, h
+                                }, -1);
+
+    }
+
 }
 
 void
@@ -445,6 +484,9 @@ ws_main_window_class_init (WsMainWindowClass *class)
   GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (class);
 
   object_class->dispose = ws_main_window_dispose;
+
+  widget_class->size_allocate = ws_main_window_size_allocate;
+
 
   gtk_widget_class_set_template_from_resource (widget_class,
                                                "/org/baedert/waster/ui/main-window.ui");
@@ -460,4 +502,31 @@ ws_main_window_class_init (WsMainWindowClass *class)
 
   gtk_widget_class_bind_template_callback (widget_class, next_button_clicked_cb);
   gtk_widget_class_bind_template_callback (widget_class, prev_button_clicked_cb);
+}
+
+static gboolean
+notification_timeout_cb (gpointer user_data)
+{
+  WsMainWindow *self = user_data;
+
+  g_clear_pointer (&self->notification, gtk_widget_unparent);
+  self->notification_id = 0;
+
+  return G_SOURCE_REMOVE;
+}
+
+void
+ws_main_window_show_notification (WsMainWindow *self,
+                                  const char   *message)
+{
+  g_clear_pointer (&self->notification, gtk_widget_unparent);
+
+  if (self->notification_id != 0)
+    g_source_remove (self->notification_id);
+
+  self->notification = ws_notification_new (message);
+  gtk_widget_set_parent (self->notification, GTK_WIDGET (self));
+
+  self->notification_id = g_timeout_add_seconds (3, notification_timeout_cb, self);
+  ws_notification_show ((WsNotification *)self->notification);
 }

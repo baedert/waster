@@ -21,3 +21,13 @@ media {
   border-radius: 6px;
   margin: 3em;
 }
+
+notification > label {
+  background: linear-gradient(to bottom, #2193b0, #6dd5ed);
+  background: #ddd;
+  color: #333;
+  border: 1px solid grey;
+  border-radius: 3px;
+  padding: .5em 1em;
+  box-shadow: 0 5px 10px rgba(0,0,0,0.25);
+}

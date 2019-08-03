@@ -32,6 +32,7 @@ sources = [
   'src/waster-media.c',
   'src/waster-impostor.c',
   'src/waster-placeholder.c',
+  'src/waster-notification.c',
   'src/imgur-proxy.c',
   'src/imgur-proxy-call.c',
   'src/imgur-gallery.c',
