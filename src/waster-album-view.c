@@ -5,6 +5,7 @@
 
 
 #define ARROW_SCALE (0.5)
+#define POINT(x, y) (graphene_point_t) {x, y}
 
 
 G_DEFINE_TYPE (WsAlbumView, ws_album_view, GTK_TYPE_WIDGET);
@@ -316,22 +317,29 @@ ws_album_view_size_allocate (GtkWidget *widget,
       const double progress = self->album_animation.progress;
       GskTransform *t = NULL;
 
-
+      t = gsk_transform_translate (t, &POINT ( final_width / 2.0, final_height / 2.0));
+      t = gsk_transform_scale (t, 1.2 - (0.2 * progress), 1.2 - (0.2 * progress));
+      t = gsk_transform_translate (t, &POINT (-final_width / 2.0, -final_height / 2.0));
       t = gsk_transform_translate (t,
                                    &(graphene_point_t) {
                                      ceil ((width - final_width) / 2.0) + (width * (1 - progress)),
                                      ceil ((height - final_height) / 2.0)
                                    });
+
       gtk_widget_allocate (self->image, final_width, final_height, -1, t);
       t = NULL;
 
       get_image_size (self->other_image, width, height, &final_width, &final_height);
 
+      t = gsk_transform_translate (t, &POINT ( final_width / 2.0, final_height / 2.0));
+      t = gsk_transform_scale (t, 1.0 - (0.2 * progress), 1.0 - (0.2 * progress));
+      t = gsk_transform_translate (t, &POINT (-final_width / 2.0, -final_height / 2.0));
       t = gsk_transform_translate (t,
                                    &(graphene_point_t) {
-                                     ceil ((width - final_width) / 2.0) - (width * progress),
-                                     ceil ((height - final_height) / 2.0),
+                                     ceil ((width - final_width) / 2.0) - (width * (progress)),
+                                     ceil ((height - final_height) / 2.0)
                                    });
+
       gtk_widget_allocate (self->other_image, final_width, final_height, -1, t);
     }
   else
