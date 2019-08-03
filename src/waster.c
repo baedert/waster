@@ -209,6 +209,9 @@ startup (GApplication *app)
   accels[0] = "<Control>S";
   gtk_application_set_accels_for_action (GTK_APPLICATION (app), "win.save-current", accels);
 
+  accels[0] = "m";
+  gtk_application_set_accels_for_action (GTK_APPLICATION (app), "win.toggle-muted", accels);
+
 
   settings = gtk_settings_get_default ();
   g_object_set (G_OBJECT (settings), "gtk-application-prefer-dark-theme", TRUE, NULL);

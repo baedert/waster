@@ -2,6 +2,7 @@
 
 #include "waster-album-view.h"
 #include "waster-media.h"
+#include "waster.h"
 
 
 #define ARROW_SCALE (0.5)
@@ -21,62 +22,9 @@ image_loaded_cb (ImgurAlbum *album,
 {
   WsAlbumView *self = user_data;
 
-  if (image->index == self->cur_image_index)
+  if ((int)image->index == self->cur_image_index)
     ws_album_view_show_image (self, image);
 }
-
-void
-ws_album_view_clear (WsAlbumView *self)
-{
-  self->n_images = 0;
-  self->album = NULL;
-
-  self->cur_image = NULL;
-  self->cur_image_index = 0;
-
-  ws_image_view_set_contents (WS_IMAGE_VIEW (self->image), NULL);
-  ws_image_view_set_contents (WS_IMAGE_VIEW (self->other_image), NULL);
-}
-
-void
-ws_album_view_set_album (WsAlbumView *self,
-                         ImgurAlbum  *album)
-{
-  GdkPaintable *cur;
-  gboolean use_animation;
-
-  g_return_if_fail (WS_IS_ALBUM_VIEW (self));
-  g_return_if_fail (album != NULL);
-
-  use_animation = (self->album != NULL);
-  cur = ws_image_view_get_contents (WS_IMAGE_VIEW (self->image));
-  ws_album_view_clear (self);
-  ws_image_view_set_contents (WS_IMAGE_VIEW (self->other_image), cur);
-
-  self->album = album;
-  self->n_images = album->n_images;
-
-  imgur_album_set_image_loaded_callback (album, image_loaded_cb, self);
-
-  if (use_animation)
-    cb_animation_start (&self->album_animation, NULL);
-}
-
-void
-ws_album_view_show_image (WsAlbumView *self,
-                          ImgurImage  *image)
-{
-  g_assert (image->paintable);
-  g_assert (image->index >= 0);
-
-  ws_image_view_stop (WS_IMAGE_VIEW (self->image));
-
-  ws_image_view_set_contents (WS_IMAGE_VIEW (self->image),
-                              image->paintable);
-
-  ws_image_view_start (WS_IMAGE_VIEW (self->image));
-}
-
 
 static void
 album_animate_func (CbAnimation *animation,
@@ -106,41 +54,6 @@ arrow_activate_func (CbAnimation *animation,
   WsAlbumView *self = (WsAlbumView *)animation->owner;
 
   self->arrow_down_scale = 1.0 + ((sinf (t * G_PI)) * ARROW_SCALE);
-}
-
-void
-ws_album_view_scroll_to_next (WsAlbumView *self)
-{
-  if (self->cur_image_index < self->n_images - 1)
-    {
-      GdkPaintable *cur;
-      self->cur_image_index ++;
-
-      cur = ws_image_view_get_contents (WS_IMAGE_VIEW (self->image));
-      ws_image_view_set_contents (WS_IMAGE_VIEW (self->other_image), cur);
-
-      ws_album_view_show_image (self, &self->album->images[self->cur_image_index]);
-
-      if (cb_animation_is_running (&self->scroll_animation))
-        cb_animation_stop (&self->scroll_animation);
-
-      cb_animation_start (&self->scroll_animation, NULL);
-      cb_animation_start (&self->arrow_activate_animation, NULL);
-
-      gtk_widget_queue_allocate (GTK_WIDGET (self));
-    }
-}
-
-void
-ws_album_view_scroll_to_prev (WsAlbumView *self)
-{
-
-  if (self->cur_image_index > 0)
-    {
-      self->cur_image_index --;
-      ws_album_view_show_image (self, &self->album->images[self->cur_image_index]);
-      gtk_widget_queue_allocate (GTK_WIDGET (self));
-    }
 }
 
 static void
@@ -175,12 +88,17 @@ ws_album_view_measure (GtkWidget      *widget,
                        int            *natural_baseline)
 {
   WsAlbumView *self = WS_ALBUM_VIEW (widget);
+  int m, n;
 
   if (self->n_images == 0)
     return;
 
   gtk_widget_measure (self->image, GTK_ORIENTATION_VERTICAL, -1,
                       minimum, natural, NULL, NULL);
+
+  /* Meh */
+  gtk_widget_measure (self->muted_image, GTK_ORIENTATION_VERTICAL, -1,
+                      &m, &n, NULL, NULL);
 }
 
 static void
@@ -230,7 +148,7 @@ get_image_size (GtkWidget *widget,
   *out_height = final_height;
 }
 
-GskTransform *
+static GskTransform *
 get_image_transform (int           image_width,
                      int           image_height,
                      int           viewport_width,
@@ -353,6 +271,17 @@ ws_album_view_size_allocate (GtkWidget *widget,
                                 }, -1);
     }
 
+  gtk_widget_measure (self->muted_image, GTK_ORIENTATION_HORIZONTAL, -1,
+                      &final_width, NULL, NULL, NULL);
+  gtk_widget_measure (self->muted_image, GTK_ORIENTATION_VERTICAL, final_width,
+                      &final_height, NULL, NULL, NULL);
+  gtk_widget_size_allocate (self->muted_image,
+                            &(GtkAllocation) {
+                              width - final_width, 0,
+                              final_width, final_height
+                            }, -1);
+
+
 }
 
 static void
@@ -371,6 +300,8 @@ ws_album_view_snapshot (GtkWidget   *widget,
           cb_animation_is_running (&self->album_animation))
         gtk_widget_snapshot_child (widget, self->other_image, snapshot);
     }
+
+  gtk_widget_snapshot_child (widget, self->muted_image, snapshot);
 
   if (self->cur_image_index < self->n_images - 1)
     {
@@ -406,6 +337,7 @@ ws_album_view_finalize (GObject *object)
 
   gtk_widget_unparent (self->image);
   gtk_widget_unparent (self->other_image);
+  gtk_widget_unparent (self->muted_image);
 
   g_clear_object (&self->arrow_down_texture);
 
@@ -415,6 +347,8 @@ ws_album_view_finalize (GObject *object)
 static void
 ws_album_view_init (WsAlbumView *self)
 {
+  GSettings *settings;
+
   gtk_widget_set_overflow (GTK_WIDGET (self), GTK_OVERFLOW_HIDDEN);
 
   self->n_images = 0;
@@ -430,6 +364,14 @@ ws_album_view_init (WsAlbumView *self)
   cb_animation_init (&self->album_animation, GTK_WIDGET (self), album_animate_func);
   cb_animation_init (&self->scroll_animation, GTK_WIDGET (self), scroll_animate_func);
   cb_animation_init (&self->arrow_activate_animation, GTK_WIDGET (self), arrow_activate_func);
+
+  self->muted_image = gtk_image_new ();
+  gtk_style_context_add_class (gtk_widget_get_style_context (self->muted_image), "muted");
+  gtk_widget_set_parent (self->muted_image, (GtkWidget *)self);
+
+  settings = ((Waster *)(g_application_get_default ()))->settings;
+  self->muted = g_settings_get_boolean (settings, "muted");
+  ws_album_view_set_muted (self, self->muted);
 }
 
 static void
@@ -447,4 +389,111 @@ ws_album_view_class_init (WsAlbumViewClass *class)
   widget_class->snapshot = ws_album_view_snapshot;
 
   gtk_widget_class_set_css_name (widget_class, "album");
+}
+
+void
+ws_album_view_clear (WsAlbumView *self)
+{
+  self->n_images = 0;
+  self->album = NULL;
+
+  self->cur_image = NULL;
+  self->cur_image_index = 0;
+
+  ws_image_view_set_contents (WS_IMAGE_VIEW (self->image), NULL);
+  ws_image_view_set_contents (WS_IMAGE_VIEW (self->other_image), NULL);
+}
+
+void
+ws_album_view_set_album (WsAlbumView *self,
+                         ImgurAlbum  *album)
+{
+  GdkPaintable *cur;
+  gboolean use_animation;
+
+  g_return_if_fail (WS_IS_ALBUM_VIEW (self));
+  g_return_if_fail (album != NULL);
+
+  use_animation = (self->album != NULL);
+  cur = ws_image_view_get_contents (WS_IMAGE_VIEW (self->image));
+  ws_album_view_clear (self);
+  ws_image_view_set_contents (WS_IMAGE_VIEW (self->other_image), cur);
+
+  self->album = album;
+  self->n_images = album->n_images;
+
+  imgur_album_set_image_loaded_callback (album, image_loaded_cb, self);
+
+  if (use_animation)
+    cb_animation_start (&self->album_animation, NULL);
+}
+
+void
+ws_album_view_show_image (WsAlbumView *self,
+                          ImgurImage  *image)
+{
+  g_assert (image->paintable);
+  g_assert (image->index >= 0);
+
+  ws_image_view_stop (WS_IMAGE_VIEW (self->image));
+
+  ws_image_view_set_contents (WS_IMAGE_VIEW (self->image),
+                              image->paintable);
+
+  ws_image_view_start (WS_IMAGE_VIEW (self->image));
+}
+
+void
+ws_album_view_scroll_to_next (WsAlbumView *self)
+{
+  if (self->cur_image_index < self->n_images - 1)
+    {
+      GdkPaintable *cur;
+      self->cur_image_index ++;
+
+      cur = ws_image_view_get_contents (WS_IMAGE_VIEW (self->image));
+      ws_image_view_set_contents (WS_IMAGE_VIEW (self->other_image), cur);
+
+      ws_album_view_show_image (self, &self->album->images[self->cur_image_index]);
+
+      if (cb_animation_is_running (&self->scroll_animation))
+        cb_animation_stop (&self->scroll_animation);
+
+      cb_animation_start (&self->scroll_animation, NULL);
+      cb_animation_start (&self->arrow_activate_animation, NULL);
+
+      gtk_widget_queue_allocate (GTK_WIDGET (self));
+    }
+}
+
+void
+ws_album_view_scroll_to_prev (WsAlbumView *self)
+{
+
+  if (self->cur_image_index > 0)
+    {
+      self->cur_image_index --;
+      ws_album_view_show_image (self, &self->album->images[self->cur_image_index]);
+      gtk_widget_queue_allocate (GTK_WIDGET (self));
+    }
+}
+
+void
+ws_album_view_set_muted (WsAlbumView  *self,
+                         gboolean      muted)
+{
+  self->muted = muted;
+
+  ws_image_view_set_muted (WS_IMAGE_VIEW (self->image), muted);
+  ws_image_view_set_muted (WS_IMAGE_VIEW (self->other_image), muted);
+
+  if (muted)
+    gtk_image_set_from_icon_name ((GtkImage *)self->muted_image,
+                                  "audio-volume-muted-symbolic");
+  else
+    gtk_image_set_from_icon_name ((GtkImage *)self->muted_image,
+                                  "audio-volume-high-symbolic");
+
+  /* But then... */
+  gtk_widget_set_visible (self->muted_image, muted);
 }

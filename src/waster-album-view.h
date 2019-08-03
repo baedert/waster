@@ -1,8 +1,6 @@
-#ifndef __ALBUM_VIEW
-#define __ALBUM_VIEW
 
+#pragma once
 #include <gtk/gtk.h>
-
 #include "waster-image-loader.h"
 #include "CbAnimation.h"
 
@@ -25,6 +23,9 @@ struct _WsAlbumView
   float arrow_down_scale;
   GdkTexture *arrow_down_texture;
   CbAnimation arrow_activate_animation;
+
+  guint muted: 1;
+  GtkWidget *muted_image;
 };
 
 typedef struct _WsAlbumView WsAlbumView;
@@ -40,6 +41,5 @@ void     ws_album_view_show_image        (WsAlbumView  *self,
 void     ws_album_view_clear             (WsAlbumView  *self);
 void     ws_album_view_scroll_to_next    (WsAlbumView  *self);
 void     ws_album_view_scroll_to_prev    (WsAlbumView  *self);
-
-
-#endif
+void     ws_album_view_set_muted         (WsAlbumView  *self,
+                                          gboolean      muted);

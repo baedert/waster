@@ -24,6 +24,8 @@ ws_image_view_set_contents (WsImageView  *self,
 
   gtk_picture_set_paintable (GTK_PICTURE (self->picture),
                              paintable);
+
+  ws_image_view_set_muted (self, self->muted);
 }
 
 GdkPaintable *
@@ -96,4 +98,7 @@ ws_image_view_set_muted (WsImageView *self,
     {
       gtk_media_stream_set_muted (GTK_MEDIA_STREAM (p), muted);
     }
+
+  self->muted = muted;
+  g_message ("%s: %d", __FUNCTION__, muted);
 }

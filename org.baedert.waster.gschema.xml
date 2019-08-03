@@ -16,5 +16,8 @@
     <key type="x" name="refresh-timestamp">
       <default>0</default>
     </key>
+    <key type="b" name="muted">
+      <default>false</default>
+    </key>
   </schema>
 </schemalist>

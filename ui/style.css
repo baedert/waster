@@ -1,5 +1,5 @@
 
-.album-stack {
+album {
   /* TODO: Radial gradients are fucking slow in gtk+ */
   /*background:radial-gradient(*/
     /*farthest-side at bottom left,*/
@@ -13,6 +13,12 @@
   /*);*/
 
   background: linear-gradient(to bottom right, #c6ffdd, #fbd786, #f7797d);
+}
+
+album > .muted {
+  color: #333;
+  -gtk-icon-size: 16px;
+  margin: .5em;
 }
 
 media {

@@ -12,6 +12,8 @@ struct _WsImageView
   GtkWidget parent_instance;
 
   GtkWidget *picture;
+
+  guint muted: 1;
 };
 
 #define WS_TYPE_IMAGE_VIEW ws_image_view_get_type()

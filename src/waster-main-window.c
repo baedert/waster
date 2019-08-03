@@ -368,12 +368,32 @@ save_current_cb (GSimpleAction *action,
     }
 }
 
+static void
+toggle_muted_cb (GSimpleAction *action,
+                 GVariant      *v,
+                 gpointer       user_data)
+{
+  WsMainWindow *self = user_data;
+  GSettings *settings;
+  gboolean value;
+
+  settings = ((Waster *)(g_application_get_default ()))->settings;
+  value = g_settings_get_boolean (settings, "muted");
+
+  value = !value;
+  g_settings_set_boolean (settings, "muted", value);
+
+  ws_album_view_set_muted (WS_ALBUM_VIEW (self->album_view), value);
+  g_message (__FUNCTION__);
+}
+
 static GActionEntry win_entries[] = {
   { "go-next",      go_next_cb, NULL, NULL, NULL },
   { "go-prev",      go_prev_cb, NULL, NULL, NULL },
   { "go-down",      go_down_cb, NULL, NULL, NULL },
   { "go-up",        go_up_cb,   NULL, NULL, NULL },
   { "save-current", save_current_cb, NULL, NULL, NULL },
+  { "toggle-muted",  toggle_muted_cb, NULL, NULL, NULL },
 };
 
 void
@@ -414,7 +434,7 @@ ws_main_window_dispose (GObject *object)
   WsMainWindow *self = (WsMainWindow *)object;
   int i;
 
-  for (i = 0; i < G_N_ELEMENTS (self->image_cancellables); i ++)
+  for (i = 0; i < (int)G_N_ELEMENTS (self->image_cancellables); i ++)
     g_clear_object (&self->image_cancellables[i]);
 
   if (self->gallery)
