@@ -37,7 +37,6 @@ waster_is_proxy_inited (Waster *waster)
   return inited;
 }
 
-
 char *
 waster_get_login_url (Waster *waster)
 {
@@ -88,7 +87,7 @@ waster_is_token_expired (Waster *waster)
 }
 
 void
-waster_maybe_refresh_token (Waster      *waster,
+waster_maybe_refresh_token (Waster     *waster,
                             const char *pin)
 {
   const char *refresh_token;

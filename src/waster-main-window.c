@@ -27,6 +27,7 @@ struct _WsMainWindow
   GtkWidget *album_stack;
   GtkWidget *album_view;
   GtkWidget *impostor;
+  GtkWidget *save_button;
 
   ImgurGallery *gallery;
 
@@ -427,6 +428,9 @@ ws_main_window_init (WsMainWindow *self)
   else
     {
       gtk_stack_set_visible_child_name (GTK_STACK (self->main_stack), "initial_state");
+      gtk_widget_hide (self->save_button);
+      gtk_widget_hide (self->next_button);
+      gtk_widget_hide (self->prev_button);
     }
 
   gtk_window_set_default_size (GTK_WINDOW (self), 1024, 768);
@@ -524,6 +528,7 @@ ws_main_window_class_init (WsMainWindowClass *class)
   gtk_widget_class_bind_template_child (widget_class, WsMainWindow, spinner);
   gtk_widget_class_bind_template_child (widget_class, WsMainWindow, album_view);
   gtk_widget_class_bind_template_child (widget_class, WsMainWindow, impostor);
+  gtk_widget_class_bind_template_child (widget_class, WsMainWindow, save_button);
 
   gtk_widget_class_bind_template_callback (widget_class, next_button_clicked_cb);
   gtk_widget_class_bind_template_callback (widget_class, prev_button_clicked_cb);
