@@ -100,5 +100,4 @@ ws_image_view_set_muted (WsImageView *self,
     }
 
   self->muted = muted;
-  g_message ("%s: %d", __FUNCTION__, muted);
 }

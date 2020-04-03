@@ -390,7 +390,6 @@ toggle_muted_cb (GSimpleAction *action,
   g_settings_set_boolean (settings, "muted", value);
 
   ws_album_view_set_muted (WS_ALBUM_VIEW (self->album_view), value);
-  g_message (__FUNCTION__);
 }
 
 static GActionEntry win_entries[] = {
