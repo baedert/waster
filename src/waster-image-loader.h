@@ -1,5 +1,4 @@
-#ifndef WASTER_IMAGE_LOADER__
-#define WASTER_IMAGE_LOADER__
+#pragma once
 
 #include <glib-object.h>
 #include <glib.h>
@@ -47,5 +46,3 @@ void              ws_image_loader_load_image_async        (WsImageLoader        
 ImgurImage *      ws_image_loader_load_image_finish       (WsImageLoader                *loader,
                                                            GAsyncResult                 *result,
                                                            GError                      **error);
-
-#endif

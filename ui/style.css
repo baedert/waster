@@ -1,18 +1,19 @@
 
 album {
-  /* TODO: Radial gradients are fucking slow in gtk+ */
-  /*background:radial-gradient(*/
-    /*farthest-side at bottom left,*/
-    /*rgba(255, 0, 255, 0.5),*/
-    /*transparent*/
-  /*),*/
-  /*radial-gradient(*/
-    /*farthest-corner at bottom right,*/
-    /*rgba(255, 50, 50, 0.5),*/
-    /*transparent 400px*/
-  /*);*/
+  /* TODO: Radial gradients are fucking slow in gtk */
+  background-color: #DDD;
+  background-image:radial-gradient(
+    farthest-side at bottom left,
+    rgba(255, 0, 255, 0.5),
+    transparent
+  ),
+  radial-gradient(
+    farthest-corner at bottom right,
+    rgba(255, 50, 50, 0.5),
+    transparent 400px
+  );
 
-  background: linear-gradient(to bottom right, #c6ffdd, #fbd786, #f7797d);
+  /*background: linear-gradient(to bottom right, #c6ffdd, #fbd786, #f7797d);*/
 }
 
 album > .muted {
@@ -22,10 +23,21 @@ album > .muted {
 }
 
 media {
+  margin: 3em;
+  border-spacing: 1.5em;
+}
+
+media > picture {
   box-shadow: 0 14px 28px rgba(0,0,0,0.25), 0 4px 10px rgba(0,0,0,0.22);
   border: 1px solid grey;
   border-radius: 6px;
-  margin: 3em;
+}
+
+media > label {
+  background-color: alpha(#333, 0.6);
+  text-shadow: 0px 1px 2px black;
+  border-radius: 4px;
+  padding: .3em;
 }
 
 notification > label {

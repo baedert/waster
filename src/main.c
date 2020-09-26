@@ -1,5 +1,3 @@
-#include <gst/gst.h>
-
 #include "waster.h"
 #include "waster-initial-state.h"
 #include "waster-album-view.h"
@@ -13,8 +11,6 @@ main (int    argc,
 {
   Waster *app;
   int ret;
-
-  gst_init (&argc, &argv);
 
   g_type_ensure (WS_TYPE_INITIAL_STATE);
   g_type_ensure (WS_TYPE_ALBUM_VIEW);

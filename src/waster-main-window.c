@@ -6,6 +6,8 @@
 #include "waster-album-view.h"
 #include "waster-impostor.h"
 #include "waster-notification.h"
+#include "gallery-manager.h"
+#include "waster-gallery.h"
 #include "waster.h"
 
 #define LOOKAHEAD 1
@@ -29,11 +31,11 @@ struct _WsMainWindow
   GtkWidget *impostor;
   GtkWidget *save_button;
 
-  ImgurGallery *gallery;
+  WsGalleryManager *gallery_manager;
+  WsGallery *gallery;
 
   WsImageLoader *loader;
 
-  int current_album_index;
   int current_image_index;
 
   GCancellable *image_cancellables[1 + LOOKAHEAD];
@@ -47,77 +49,21 @@ typedef struct _WsMainWindow WsMainWindow;
 G_DEFINE_TYPE (WsMainWindow, ws_main_window, GTK_TYPE_APPLICATION_WINDOW);
 
 static void
-refresh_cancellable (GCancellable **c)
-{
-  g_assert (c);
-
-  if (*c != NULL)
-    {
-      g_cancellable_cancel (*c);
-      g_object_unref (*c);
-    }
-
-  *c = g_cancellable_new ();
-}
-
-static void
-ws_main_window_show_image (WsMainWindow *self,
-                           int           image_index)
-{
-  const ImgurAlbum *album;
-  int i;
-
-  self->current_image_index = image_index;
-
-  album = &self->gallery->albums[self->current_album_index];
-
-  /* Load the current image */
-  refresh_cancellable (&self->image_cancellables[0]);
-  ws_image_loader_load_image_async (self->loader,
-                                    &album->images[image_index],
-                                    self->image_cancellables[0],
-                                    image_loaded_cb,
-                                    self);
-
-  /* Show first image */
-  ws_album_view_show_image (WS_ALBUM_VIEW (self->album_view), &album->images[image_index]);
-
-  for (i = 0; i < MIN (LOOKAHEAD, album->n_images - image_index - 1); i ++)
-    {
-      refresh_cancellable (&self->image_cancellables[1 + i]);
-      ws_image_loader_load_image_async (self->loader,
-                                        &album->images[image_index + 1 + i],
-                                        self->image_cancellables[1 + i],
-                                        image_loaded_cb,
-                                        self);
-    }
-
-  if (self->current_album_index < self->gallery->n_albums - 1)
-    {
-      const ImgurAlbum *next_album = &self->gallery->albums[self->current_album_index + 1];
-      ws_image_loader_load_image_async (self->loader,
-                                        &next_album->images[0],
-                                        NULL,
-                                        image_loaded_cb,
-                                        self);
-    }
-}
-
-static void
-album_loaded_cb (GObject      *source_object,
+image_loaded_cb (GObject      *source_object,
                  GAsyncResult *result,
                  gpointer      user_data)
 {
+  WsMainWindow *self = user_data;
   GError *error = NULL;
-  ImgurAlbum *album;
-  WsImageLoader *loader = WS_IMAGE_LOADER (source_object);
+  WsImage *image;
 
-  album = ws_image_loader_load_album_finish (loader, result, &error);
+  image = ws_gallery_manager_load_image_finish (self->gallery_manager, result, &error);
+  g_assert (image);
 
   if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
     {
       g_error_free (error);
-      g_message ("album lading cancelled");
+      g_message ("image lading cancelled");
       return;
     }
   else if (error != NULL)
@@ -126,18 +72,21 @@ album_loaded_cb (GObject      *source_object,
       g_error_free (error);
       return;
     }
+
+  ws_album_view_show_image (WS_ALBUM_VIEW (self->album_view), image);
 }
 
 static void
-image_loaded_cb (GObject      *source_object,
-                 GAsyncResult *result,
-                 gpointer      user_data)
+image_loaded_cb_ignore (GObject      *source_object,
+                        GAsyncResult *result,
+                        gpointer      user_data)
 {
+  WsMainWindow *self = user_data;
   GError *error = NULL;
-  ImgurImage *image;
-  WsImageLoader *loader = WS_IMAGE_LOADER (source_object);
+  WsImage *image;
 
-  image = ws_image_loader_load_image_finish (loader, result, &error);
+  image = ws_gallery_manager_load_image_finish (self->gallery_manager, result, &error);
+  g_assert (image);
 
   if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
     {
@@ -154,73 +103,43 @@ image_loaded_cb (GObject      *source_object,
 }
 
 static void
-show_next_album (WsMainWindow *self)
+show_next_image (WsMainWindow *self)
 {
-  WsImageLoader *loader = self->loader;
-  ImgurAlbum *album;
-  char buff[4096];
+  WsImage *image;
 
   if (!self->gallery)
     return;
 
-  self->current_album_index ++;
-  self->current_image_index = 0;
+  self->current_image_index ++;
 
-  /* TODO: Remove this and load the next page instead */
-  if (self->current_album_index >= self->gallery->n_albums)
-    g_error ("New album index too high: %d but only have %d albums",
-             self->current_album_index, self->gallery->n_albums);
+  // TODO: What to do once we've reached the end of the gallery?
 
-  album = &self->gallery->albums[self->current_album_index];
-  ws_album_view_set_album (WS_ALBUM_VIEW (self->album_view), album);
+  ws_gallery_manager_load_image_async (self->gallery_manager,
+                                       self->gallery,
+                                       self->current_image_index,
+                                       NULL,
+                                       image_loaded_cb,
+                                       self);
 
-  ws_image_loader_load_album_async (loader,
-                                    album,
-                                    NULL,
-                                    album_loaded_cb,
-                                    self);
+  /* Preload next image */
+  ws_gallery_manager_load_image_async (self->gallery_manager,
+                                       self->gallery,
+                                       self->current_image_index + 1,
+                                       NULL,
+                                       image_loaded_cb_ignore,
+                                       self);
 
-  g_snprintf (buff, sizeof (buff), "%s (%d)", album->title, album->n_images);
-  gtk_window_set_title (GTK_WINDOW (self), buff);
 
-  if (self->current_album_index > 0)
+  image = ws_gallery_get_image (self->gallery, self->current_image_index);
+  if (image->title)
+    gtk_window_set_title (GTK_WINDOW (self), image->title);
+  else
+    gtk_window_set_title (GTK_WINDOW (self), "Waster");
+
+  if (self->current_image_index > 0)
     gtk_widget_set_sensitive (self->prev_button, TRUE);
 
   gtk_stack_set_visible_child_name (GTK_STACK (self->album_stack), "album");
-
-  ws_main_window_show_image (self, 0);
-}
-
-static void
-show_prev_album (WsMainWindow *self)
-{
-  ImgurAlbum *album;
-  WsImageLoader *loader = self->loader;
-  char buff[4096];
-
-  if (!self->gallery)
-    return;
-
-  if (self->current_album_index == 0)
-    return;
-
-  self->current_album_index --;
-  self->current_image_index = 0;
-
-  album = &self->gallery->albums[self->current_album_index];
-  ws_album_view_set_album (WS_ALBUM_VIEW (self->album_view), album);
-
-  ws_image_loader_load_album_async (loader,
-                                    album,
-                                    NULL,
-                                    album_loaded_cb,
-                                    self);
-
-  if (self->current_album_index == 0)
-    gtk_widget_set_sensitive (self->prev_button, FALSE);
-
-  g_snprintf (buff, sizeof (buff), "%s (%d)", album->title, album->n_images);
-  gtk_window_set_title (GTK_WINDOW (self), buff);
 }
 
 void
@@ -229,7 +148,7 @@ next_button_clicked_cb (GtkButton *button,
 {
   WsMainWindow *window = user_data;
 
-  show_next_album (window);
+  show_next_image (window);
 }
 
 void
@@ -237,8 +156,6 @@ prev_button_clicked_cb (GtkButton *button,
                         gpointer   user_data)
 {
   WsMainWindow *window = user_data;
-
-  show_prev_album (window);
 }
 
 WsMainWindow *
@@ -255,12 +172,12 @@ gallery_loaded_cb (GObject      *source_object,
                    GAsyncResult *result,
                    gpointer      user_data)
 {
+  WsGalleryManager *manager = (WsGalleryManager *)source_object;
   GError *error = NULL;
-  WsImageLoader *loader = WS_IMAGE_LOADER (source_object);
   WsMainWindow *window = user_data;
-  ImgurGallery *gallery;
+  WsGallery *gallery;
 
-  gallery = ws_image_loader_load_gallery_finish (loader, result, &error);
+  gallery = ws_gallery_manager_load_gallery_finish (manager, result, &error);
 
   if (error != NULL)
     {
@@ -268,8 +185,7 @@ gallery_loaded_cb (GObject      *source_object,
       return;
     }
 
-  /* -1 so show_next_album will incrase it to 0 and load that */
-  window->current_album_index = -1;
+  /* -1 so show_next_image will incrase it to 0 and load that */
   window->current_image_index = -1;
 
   {
@@ -292,7 +208,7 @@ gallery_loaded_cb (GObject      *source_object,
   g_free (window->gallery);
   window->gallery = gallery;
 
-  show_next_album (window);
+  show_next_image (window);
 }
 
 static void
@@ -302,9 +218,8 @@ go_next_cb (GSimpleAction *action,
 {
   WsMainWindow *window = user_data;
 
-  show_next_album (window);
+  show_next_image (window);
 }
-
 
 static void
 go_prev_cb (GSimpleAction *action,
@@ -312,8 +227,6 @@ go_prev_cb (GSimpleAction *action,
             gpointer       user_data)
 {
   WsMainWindow *window = user_data;
-
-  show_prev_album (window);
 }
 
 static void
@@ -322,13 +235,6 @@ go_down_cb (GSimpleAction *action,
             gpointer       user_data)
 {
   WsMainWindow *self = user_data;
-  ImgurAlbum *album;
-
-  album = &self->gallery->albums[self->current_album_index];
-
-  ws_album_view_scroll_to_next (WS_ALBUM_VIEW (self->album_view));
-
-  ws_main_window_show_image (self, WS_ALBUM_VIEW (self->album_view)->cur_image_index);
 }
 
 static void
@@ -337,11 +243,6 @@ go_up_cb (GSimpleAction *action,
           gpointer       user_data)
 {
   WsMainWindow *self = user_data;
-  ImgurAlbum *album;
-
-  album = &self->gallery->albums[self->current_album_index];
-
-  ws_album_view_scroll_to_prev (WS_ALBUM_VIEW (self->album_view));
 }
 
 static void
@@ -350,10 +251,7 @@ save_current_cb (GSimpleAction *action,
                  gpointer       user_data)
 {
   WsMainWindow *self = user_data;
-  const ImgurAlbum *album;
-  const ImgurImage *image;
-  char buff[512];
-
+#if 0
   album = &self->gallery->albums[self->current_album_index];
   image = &album->images[self->current_image_index];
 
@@ -372,6 +270,7 @@ save_current_cb (GSimpleAction *action,
     {
       ws_main_window_show_notification (self, "Can't save videos :(");
     }
+#endif
 }
 
 static void
@@ -413,16 +312,19 @@ ws_main_window_init (WsMainWindow *self)
                                    self);
 
   self->loader = ws_image_loader_new ();
+  self->gallery_manager = ws_gallery_manager_new ();
 
   if (waster_is_proxy_inited (app))
     {
       gtk_stack_set_visible_child_name (GTK_STACK (self->main_stack), "spinner");
       gtk_spinner_start (GTK_SPINNER (self->spinner));
-      ws_image_loader_load_gallery_async (self->loader,
-                                          &IMGUR_GALLERIES[0],
-                                          NULL,
-                                          gallery_loaded_cb,
-                                          self);
+
+      /* TODO: Save selected gallery and load that one here */
+     ws_gallery_manager_load_gallery_async (self->gallery_manager,
+                                            &IMGUR_GALLERIES[0],
+                                            NULL,
+                                            gallery_loaded_cb,
+                                            self);
     }
   else
     {
@@ -440,34 +342,12 @@ static void
 ws_main_window_dispose (GObject *object)
 {
   WsMainWindow *self = (WsMainWindow *)object;
-  int i;
+  guint i;
 
-  for (i = 0; i < (int)G_N_ELEMENTS (self->image_cancellables); i ++)
+  for (i = 0; i < G_N_ELEMENTS (self->image_cancellables); i ++)
     g_clear_object (&self->image_cancellables[i]);
 
-  if (self->gallery)
-    {
-      for (i = 0; i < self->gallery->n_albums; i ++)
-        {
-          ImgurAlbum *album = &self->gallery->albums[i];
-          int k;
-
-          g_clear_pointer (&album->title, g_free);
-
-          for (k = 0; k < album->n_images; k ++)
-            {
-              ImgurImage *image = &album->images[k];
-
-              g_clear_pointer (&image->id, g_free);
-              g_clear_pointer (&image->title, g_free);
-              g_clear_pointer (&image->link, g_free);
-              g_clear_object (&image->paintable);
-            }
-          g_clear_pointer (&album->images, g_free);
-        }
-      g_clear_pointer (&self->gallery->albums, g_free);
-      g_clear_pointer (&self->gallery, g_free);
-    }
+  // TODO: gallery manager
 
   g_clear_object (&self->loader);
   g_clear_pointer (&self->notification, gtk_widget_unparent);

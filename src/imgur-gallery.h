@@ -49,6 +49,7 @@ void imgur_album_notify_image_loaded       (ImgurAlbum                *self,
                                             int                        image_index);
 
 
+
 typedef struct
 {
   const char *name;
@@ -67,7 +68,5 @@ typedef struct
   int n_albums;
   ImgurAlbum *albums;
 } ImgurGallery;
-
-
 
 #endif

@@ -1,5 +1,4 @@
-#ifndef WASTER__
-#define WASTER__
+#pragma once
 
 #include <glib-object.h>
 #include <gtk/gtk.h>
@@ -21,10 +20,6 @@ typedef struct _Waster Waster;
 GQuark ws_error_quark (void);
 
 
-enum {
-  WS_GENERIC_ERROR
-} WsErrors;
-
 G_DECLARE_FINAL_TYPE (Waster, waster, ws, WS, GtkApplication)
 
 Waster * waster_new (void);
@@ -32,5 +27,3 @@ gboolean waster_is_proxy_inited (Waster *waster);
 gchar *  waster_get_login_url (Waster *waster);
 void     waster_set_access_tokens (Waster *waster, const gchar *access_token, const gchar *refresh_token);
 void     waster_maybe_refresh_token (Waster *waster, const gchar *pin);
-
-#endif
